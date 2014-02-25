@@ -30,9 +30,12 @@ shinyUI(pageWithSidebar(
                    c("All" = "all",
                      "Golds" = "golden",
                      "Units" = "normal")),
-      showOutput("total_distros", "nvd3")        
-      #htmlOutput("html_table_answers")
-              ),
+      tabsetPanel(
+        tabPanel("Answer Distros Graph",        
+          uiOutput("titleTotalGraph"),
+          showOutput("total_distros", "nvd3")),        
+        tabPanel("Graph Summary"))
+      ),
      tabPanel("Contributor Answers",
       textInput(inputId="id_chosen", 
                 label="Choose a worker id to graph:", value=""),
