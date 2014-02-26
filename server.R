@@ -1,5 +1,5 @@
     ###Milkshaker Server###
-    ###Last updated 02/10/2014###
+    ###Last updated 02/26/2014###
     ##Total Answer Distros && group by - times, trust, golds seen
     ##Compare contrib id with total, with untrusted, with trusted
     ##Who the f%@k keeps putting that?
@@ -16,8 +16,6 @@
     
     options(stringsAsFactors = F)
     options(shiny.maxRequestSize=150*1024^2)
-    setwd('~/Documents/milkshaker')
-    #full = read.csv('f355916.csv', stringsAsFactors = F)
     
     shinyServer(function(input, output){
       
@@ -29,8 +27,6 @@
         } else {
           inFile <- input$files
           full = read.csv(inFile$datapath, na.strings="NaN", stringsAsFactors=FALSE)
-          #print(head(full$X_created_at))
-          #print(full$X_created_at)
           full$X_created_at = as.POSIXct(full$X_created_at,
                                              format='%m/%d/%Y %H:%M:%S')
           return(full)
@@ -101,8 +97,6 @@
       file = full()  
       gold_cols = grepl(".\\gold$", names(file)) & !grepl(".\\golden",names(file))
       gold_cols_names = names(file)[gold_cols]    
-      
-      #ans_cols = gsub(gold_cols, pattern=".\\gold", replacement="")
       ans_cols_names = gsub(gold_cols_names, pattern=".\\gold", replacement="")
       answer_data = c(gold_cols_names, ans_cols_names)
       print(answer_data)
@@ -146,13 +140,9 @@
         } else {
           full_file = workers()
           times_range = range(full_file$last_submission)
-          #print(times_range)
           num_time2 = as.numeric(times_range[2])
           num_time1 = as.numeric(times_range[1])
-          #print(num_time1)
-          #print(num_time2)
           max_time = ((num_time2 - num_time1)/3600)
-          #print(max_time)
           sliderInput(inputId = "times_chosen",
                       label = "Last Submit Times by Hour",
                       min = 0, max = max_time,
@@ -197,10 +187,6 @@
       num_total_workers = length(unique(total_workers$X_worker_id))
       num_subset_workers = length(unique(subset_workers$X_worker_id))
       num_judgments = length(subset_workers$X_worker_id)
-      #if (new_workers_trust > 50){
-      #  max_count = min(50, nrow(new_workers_trust))
-      #  new_workers_trust = 50
-      #}
       if (num_subset_workers != num_total_workers){
         puts = paste("Answer distributions for", num_subset_workers, "of", num_total_workers, "total workers |", 
                      num_judgments, "judgments used", sep=" ")
@@ -259,7 +245,6 @@
         return(NULL)
       } else {
         full_file = table_for_answer_distros()
-  #      workers = workers()
         
         answer_cols = grepl(pattern=".\\gold$", names(full_file)) &
           !grepl(pattern=".\\golden",names(full_file))
@@ -325,23 +310,12 @@
       full_file = full_file_contrib_id()
       full_file_all = full()
           
-  #     for(i in 1:length(full_file$X_worker_id)){
-  #       full_file$type[i] = "individual" 
-  #     }
-          
-  #     for(i in 1:length(full_file_all$X_worker_id)){
-  #       full_file_all$type[i] = "all"
-  #     }
-             
-      #full_file = rbind(full_file, full_file_all)
-      #print("combined files")
-      #print(full_file)
-          
       answer_cols = grepl(pattern=".\\gold$", names(full_file)) &
         !grepl(pattern=".\\golden",names(full_file))
       answer_cols_names = names(full_file)[answer_cols]
       answer_cols_names = gsub(answer_cols_names, pattern=".\\gold", replacement="")
           
+      
       chosen_q = input$question_chosen_contrib
       question_index = which(answer_cols_names == chosen_q)
           
@@ -366,29 +340,18 @@
         responses_all = table(full_file_all[,names(full_file_all)==y])
         responses_all/sum(responses_all)
       })
-          
-      responses_table = responses[[question_index]]
-      #print(typeof(responses_table))
-      #print(responses_table)
-      #responses_table$type = "individual"
-      responses_table_all = responses[[question_index]]
-      print("Total Table")
-      print(responses_table_all)
-      #responses_table$type = "total"
       
-      responses_table_bind = rbind(responses_table, responses_table_all)
-      print("Binded Table")
-      print(responses_table_bind)
-      print(names(responses_table_bind))
-      responses_table_transformed = data.frame(questions = names(responses_table),
-                                               numbers = as.numeric(responses_table),
-                                               group = chosen_q)
-          
-      #responses_table_bind_transformed = data.frame(questions = names(responses_table_bind),
-      #                                              numbers = as.numeric(responses_table_bind),
-      #                                              group = chosen_q)
+      individual = responses[[question_index]]
+      all = responses_all[[question_index]]
       
-      print(responses_table_transformed)
+      responses_table_bind = rbind(individual, all)
+      
+      responses_table_transformed = data.frame(questions = rep(colnames(responses_table_bind), 
+                                                               each=nrow(responses_table_bind)),
+                                               numbers = as.numeric(responses_table_bind),
+                                               group = rep(row.names(responses_table_bind), 
+                                                           rep=ncol(responses_table_bind)))
+      
           
           
       if (nrow(responses_table_transformed) > 9 ) {
@@ -400,81 +363,28 @@
       }
           
       responses_table_transformed$questions[responses_table_transformed$questions==""] = "\"\""
-          
+      View(responses_table_transformed)    
       
       p4 <- nPlot(numbers ~ questions, data=responses_table_transformed,
                   group = 'group', type='multiBarChart', 
                   dom='contrib_distros', width=800, margin=60, overflow="visible") 
-          
+      
       p4$xAxis(rotateLabels=45)
-      p4$xAxis(axisLabel='Worker Responses')
       p4$chart(reduceXTicks = FALSE)
-      #scale.tickFormat(20, "$,.2f");
+  
       p4
     }
   })
-         
-  #     output$contrib_distros <- renderChart({
-  #       if (is.na(input$files[1])) {
-  #         # User has not uploaded a file yet
-  #         return(NULL)
-  #       } else {
-  #         full_file = full_file_contrib_id()
-  #         #workers = workers()
-  #         
-  #         answer_cols = grepl(pattern=".\\gold$", names(full_file)) &
-  #           !grepl(pattern=".\\golden",names(full_file))
-  #         answer_cols_names = names(full_file)[answer_cols]
-  #         answer_cols_names = gsub(answer_cols_names, pattern=".\\gold", replacement="")
-  #         
-  #         chosen_q = input$question_chosen_contrib
-  #         question_index = which(answer_cols_names == chosen_q)
-  #         
-  #         chosen_state = input$state_chosen_contrib
-  #         
-  #         if ("X_golden" %in% names(full_file)) {
-  #           if (chosen_state == "golden") {
-  #             full_file = full_file[full_file$X_golden == 'true',]
-  #           } else if (chosen_state == "normal") {
-  #             full_file = full_file[full_file$X_golden != 'true',]
-  #           }
-  #         }
-  #         
-  #         responses = lapply(answer_cols_names, function(x) {
-  #           responses = table(full_file[,names(full_file)==x])
-  #           responses/sum(responses)
-  #         }
-  #         )
-  #         
-  #         responses_table = responses[[question_index]]
-  #         
-  #         responses_table_transformed = data.frame(questions = names(responses_table),
-  #                                                  numbers = as.numeric(responses_table),
-  #                                                  group = chosen_q)
-  #         
-  #         responses_table_transformed = 
-  #           responses_table_transformed[order(-responses_table_transformed$numbers),]
-  #         
-  #         if (nrow(responses_table_transformed) > 9 ) {
-  #           responses_table_transformed1 = responses_table_transformed[1:9,]
-  #           responses_table_transformed1[10,] =
-  #             c("Other Values", sum(responses_table_transformed$numbers[10:length(responses_table_transformed)]),
-  #               chosen_q)
-  #           responses_table_transformed = responses_table_transformed1
-  #         }
-  #         
-  #         responses_table_transformed$questions[responses_table_transformed$questions==""] = "\"\""
-  #         
-  #         
-  #         p4 <- nPlot(numbers ~ questions, data=responses_table_transformed,
-  #                     group = 'group', type='multiBarChart', 
-  #                     dom='contrib_distros', width=800, margin=60, overflow="visible") 
-  #         
-  #         p4$xAxis(rotateLabels=45)
-  #         p4$xAxis(axisLabel='Worker Responses')
-  #         p4$chart(reduceXTicks = FALSE)
-  #         p4
-  #       }
-  #       
-  #     })    
+      
+  output$graphDesc <- renderUI({ 
+    if (is.na(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+     profile_id = input$id_chosen
+     puts <- paste('This graph compares answers from', profile_id, 'with the total distributions of the job.', sep=" ")
+     puts
+  }   
   })
+      
+})

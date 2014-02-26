@@ -1,5 +1,6 @@
 ###Milkshaker UI###
-###Last updated 02/10/2014###
+###Last updated 02/26/2014###
+##recently add comparitive graph and description###
 
 require('shiny')
 require('datasets')
@@ -44,8 +45,8 @@ shinyUI(pageWithSidebar(
                   c("All" = "all",
                     "Golds" = "golden",
                     "Units" = "normal")),
-      showOutput("contrib_distros", "nvd3") 
-      #htmlOutput("html_table_workers")
+      showOutput("contrib_distros", "nvd3"),
+      uiOutput("graphDesc")
               ),
      tabPanel("Who the f@*k put that?",
               uiOutput("answer_columns")),
