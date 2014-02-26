@@ -350,7 +350,7 @@
                                                                each=nrow(responses_table_bind)),
                                                numbers = as.numeric(responses_table_bind),
                                                group = rep(row.names(responses_table_bind), 
-                                                           rep=ncol(responses_table_bind)))
+                                                           times=ncol(responses_table_bind)))
       
           
           
