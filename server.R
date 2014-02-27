@@ -341,26 +341,31 @@
         responses_all/sum(responses_all)
       })
       
-      individual = responses[[question_index]]
-      all = responses_all[[question_index]]
+      individual = as.data.frame(responses[[question_index]])
+      all = as.data.frame(responses_all[[question_index]])
+      missing_var1 = all$Var1[!(all$Var1 %in% individual$Var1)]
+      
+      if (length(missing_var1) != 0){
+        missing_rows = data.frame(Var1 = missing_var1, Freq = 0 )
+        individual = rbind(individual, missing_rows)
+      }
       
       responses_table_bind = rbind(individual, all)
+      group_var = c(rep("individual", times=nrow(individual)),
+                    rep("all", times=nrow(all)))
+      responses_table_bind$group_var = group_var
       
-      responses_table_transformed = data.frame(questions = rep(colnames(responses_table_bind), 
-                                                               each=nrow(responses_table_bind)),
-                                               numbers = as.numeric(responses_table_bind),
-                                               group = rep(row.names(responses_table_bind), 
-                                                           times=ncol(responses_table_bind)))
-      
+      responses_table_transformed = data.frame(questions = as.character(responses_table_bind$Var1), 
+                                               numbers = as.numeric(responses_table_bind$Freq),
+                                               group = responses_table_bind$group_var)
           
-          
-      if (nrow(responses_table_transformed) > 9 ) {
-        responses_table_transformed1 = responses_table_transformed[1:9,]
-        responses_table_transformed1[10,] =
-          c("Other Values", sum(responses_table_transformed$numbers[10:length(responses_table_transformed)]),
-            chosen_q)
-        responses_table_transformed = responses_table_transformed1
-      }
+#      if (nrow(responses_table_transformed) > 9 ) {
+#        responses_table_transformed1 = responses_table_transformed[1:9,]
+#        responses_table_transformed1[10,] =
+#          c("Other Values", sum(responses_table_transformed$numbers[10:length(responses_table_transformed)]),
+#            chosen_q)
+#        responses_table_transformed = responses_table_transformed1
+#      }
           
       responses_table_transformed$questions[responses_table_transformed$questions==""] = "\"\""
       View(responses_table_transformed)    
