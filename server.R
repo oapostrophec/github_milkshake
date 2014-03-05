@@ -12,7 +12,7 @@ require('plyr')
 require('rCharts')
 require('ggplot2')
 require('devtools')
-
+require('stringr')
 
 options(stringsAsFactors = F)
 options(shiny.maxRequestSize=150*1024^2)
@@ -33,6 +33,17 @@ shinyServer(function(input, output){
     }
   })
 
+  job_id <- reactive({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      inFile <- input$files$name
+      job_id = gsub(inFile, pattern="^f", replacement="")
+      job_id = str_extract(job_id, "\\d{6}")
+      return(job_id)
+    }
+  })
   
   full_file_contrib_id <- reactive({
     if (is.na(input$files[1]) || input$id_chosen == "") {
@@ -94,7 +105,6 @@ shinyServer(function(input, output){
       # User has not uploaded a file yet
       return(NULL)
     }else{
-      
       file = full()  
       gold_cols = grepl(".\\gold$", names(file)) & !grepl(".\\golden",names(file))
       gold_cols_names = names(file)[gold_cols]    
@@ -131,10 +141,10 @@ shinyServer(function(input, output){
       return(NULL)
     } else {
       table= create_answer_index()
-      #if (nrow(table) > 50){
-      #  max_count = min(50, nrow(table))
-      #  table = table[1:max_count,]
-      #}
+      if (nrow(table) > 50){
+        max_count = min(50, nrow(table))
+        table = table[1:max_count,]
+      }
       html_table = "<table border=1>"
       #worker_table_ip$last_submit_ip = as.character(worker_table_ip$last_submit_ip)
       table = rbind(names(table), table)
@@ -258,6 +268,19 @@ shinyServer(function(input, output){
     }
   })    
   
+  output$questionSelectorSearch <- renderUI({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      questions = full_file_gold_answers()
+      questions = gsub(questions, pattern=".\\gold", replacement="")
+      questions = c("all", questions)
+      selectInput(inputId="question_chosen_contrib", label="In which columns should we look?", 
+                  questions)
+    }
+  })
+  
   table_for_answer_distros <- reactive({
     if (is.na(input$files[1])) {
       # User has not uploaded a file yet
@@ -265,6 +288,20 @@ shinyServer(function(input, output){
     } else {
       full_file = full()
       workers = workers()
+      
+      if(input$crowd_chosen != 'all'){
+        full_file = full_file[full_file$X_tainted == input$crowd_chosen,]
+      }
+      
+      chosen_state = input$state_chosen
+      
+      if ("X_golden" %in% names(full_file)) {
+        if (chosen_state == "golden") {
+          full_file = full_file[full_file$X_golden == 'true',]
+        } else if (chosen_state == "normal") {
+          full_file = full_file[full_file$X_golden != 'true',]
+        }
+      }
       
       if (!is.null(input$trust_chosen)) {
         full_file = full_file[full_file$X_trust <= max(input$trust_chosen) &
@@ -275,7 +312,6 @@ shinyServer(function(input, output){
            min(input$golds_chosen) != min(workers$num_golds_seen)){
         ids = workers$X_worker_id[workers$num_golds_seen <= max(input$golds_chosen) &
                                     workers$num_golds_seen >= min(input$golds_chosen)]
-        
         
         full_file = full_file[(full_file$X_worker_id %in% ids),]
       }
@@ -299,18 +335,85 @@ shinyServer(function(input, output){
     }
   })
   
+  table_for_distros_summary <- reactive({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      workers = workers()
+      subsetted_workers = table_for_answer_distros()
+      subsetted_workers = subsetted_workers$X_worker_id
+      print(subsetted_workers)
+      workers = workers[(workers$X_worker_id %in% subsetted_workers),]
+      print("Table Summary")
+      print(head(workers))
+      workers
+    }
+  })
+  
+  output$create_summary_table <- renderText({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      job_id = job_id()
+      worker_table = table_for_distros_summary()
+      if (length(worker_table$X_worker_id) > 50){
+        max_count = min(50, nrow(worker_table))
+        worker_table = worker_table[1:max_count,]
+      }
+      
+      html_table = "<table border=1>"
+      worker_table$last_submission = as.character(worker_table$last_submission)
+      worker_table = rbind(names(worker_table),
+                           worker_table)
+      for (i in 1:nrow(worker_table)) {
+        this_row = worker_table[i,]
+        html_table = paste(html_table, '<tr>', sep="\n")
+        if (i == 1) {
+          for (value in this_row) {
+            html_table = paste(html_table, '<td>', sep="\n")
+            html_table = paste(html_table,
+                               paste("<b>",value, "</b>"),
+                               sep="\n") # pastes value!
+            html_table = paste(html_table, '</td>', sep="\n")
+          }
+        } else {
+          for (value_id in 1:length(this_row)) {
+            value = this_row[value_id]
+            html_table = paste(html_table, '<td>', sep="\n")
+            if (value_id == 1) {
+              value_link = paste("https://crowdflower.com/jobs/",
+                                 job_id,
+                                 "/contributors/",
+                                 value,
+                                 sep=""
+              )
+              value_to_paste= paste("<a href=\"",
+                                    value_link,
+                                    "\" target=\"_blank\">",
+                                    value,
+                                    "</a>")
+              html_table = paste(html_table, value_to_paste, sep="\n") # pastes value!
+            } else {
+              html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
+            }
+            html_table = paste(html_table, '</td>', sep="\n")
+          }
+        }
+        html_table = paste(html_table, '</tr>', sep="\n")
+      }
+      html_table = paste(html_table,"</table>", sep="\n")
+      paste(html_table)
+    }
+  })
+  
   output$total_distros <- renderChart({
     if (is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
       full_file = table_for_answer_distros()
-      
-      if(input$crowd_chosen != 'all'){
-        full_file = full_file[full_file$X_tainted == input$crowd_chosen,]
-        
-      }
-      
       answer_cols = grepl(pattern=".\\gold$", names(full_file)) &
         !grepl(pattern=".\\golden",names(full_file))
       answer_cols_names = names(full_file)[answer_cols]
@@ -318,16 +421,6 @@ shinyServer(function(input, output){
       
       chosen_q = input$question_chosen
       question_index = which(answer_cols_names == chosen_q)
-      
-      chosen_state = input$state_chosen
-      
-      if ("X_golden" %in% names(full_file)) {
-        if (chosen_state == "golden") {
-          full_file = full_file[full_file$X_golden == 'true',]
-        } else if (chosen_state == "normal") {
-          full_file = full_file[full_file$X_golden != 'true',]
-        }
-      }
       
       responses = lapply(answer_cols_names, function(x) {
         responses = table(full_file[,names(full_file)==x])
