@@ -112,12 +112,14 @@ shinyServer(function(input, output){
       melted_df_full$value = as.character(melted_df_full$value)
       melted_df_full$variable = as.character(melted_df_full$variable)
       melted_df_full$X_worker_id = as.numeric(as.character(melted_df_full$X_worker_id))
-     # melted_df_full$value[melted_df_full$value =="" ] = "\"\""
+      # melted_df_full$value[melted_df_full$value =="" ] = "\"\""
       print(head(melted_df_full))
-      summarized_df = ddply(melted_df_full, .(X_worker_id, variable, value), summarize, 
-                    percent = 
-                      length(value)/sum(melted_df_full$X_worker_id == X_worker_id[1] & melted_df_full$variable == variable[1]), 
-                    num_j = sum(melted_df_full$X_worker_id == X_worker_id[1]))
+      print("before ddply")
+      summarized_df = ddply(melted_df_full, .(X_worker_id,variable), summarize, 
+                    percent = prop.table(table(value)), 
+                    answer = names(table(value)),
+                    num_j = rep(sum(table(value)),times=length(table(value)))
+                    )
       print(head(summarized_df))
       summarized_df
     }
