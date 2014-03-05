@@ -62,6 +62,7 @@ shinyUI(pageWithSidebar(
      tabPanel("Who the f@*k put that?",
               textInput(inputId="answer_chosen",
                         label="Search for:", value=""),
+              uiOutput("percentageSelector"),
               uiOutput("questionSelectorSearch"),
               htmlOutput("create_answer_index_table")),
      tabPanel("Set Milkshake")

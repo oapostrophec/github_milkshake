@@ -109,28 +109,43 @@ shinyServer(function(input, output){
       gold_cols = grepl(".\\gold$", names(file)) & !grepl(".\\golden",names(file))
       gold_cols_names = names(file)[gold_cols]    
       ans_cols_names = gsub(gold_cols_names, pattern=".\\gold", replacement="")
-      #answer_data = c(gold_cols_names, ans_cols_names)
-      #print(answer_data)
+      
       file[is.na(file)] = ""
-      print('bout to melt')
-      print(head(file))
+      
+      field_name = input$question_chosen_search
+      search_for = input$answer_chosen
+      percentage = input$percentage_chosen
       full_melt = file[,c("X_worker_id", ans_cols_names)]
-      print(names(full_melt))
-      print('bout to melt 2')
-      print(head(full_melt))
+      
       melted_df_full = melt(full_melt, id="X_worker_id")
       melted_df_full$value = as.character(melted_df_full$value)
       melted_df_full$variable = as.character(melted_df_full$variable)
       melted_df_full$X_worker_id = as.numeric(as.character(melted_df_full$X_worker_id))
-      # melted_df_full$value[melted_df_full$value =="" ] = "\"\""
-      print(head(melted_df_full))
-      print("before ddply")
+      melted_df_full$value[melted_df_full$value =="" ] = "\"\""
+      
+      if (field_name != "all"){
+        melted_df_full = melted_df_full[melted_df_full$variable == field_name,]
+      }
+      
+      if(search_for != ""){
+        melted_df_full = melted_df_full[melted_df_full$value == search_for,]
+      }
+      
       summarized_df = ddply(melted_df_full, .(X_worker_id,variable), summarize, 
                     percent = prop.table(table(value)), 
                     answer = names(table(value)),
                     num_j = rep(sum(table(value)),times=length(table(value)))
                     )
-      print(head(summarized_df))
+      
+      print("Percentages Input")
+      print(percentage)
+      if(min(percentage) != 0.01 || max(percentage) != 1.0){
+        print("Did you make it here?")
+        summarized_df = summarized_df[summarized_df$percent >= min(percentage) & summarized_df$percent <= max(percentage),]
+        print(tail(summarized_df))
+      }
+      
+      summarized_df = summarized_df[order(summarized_df$num_j, decreasing=T),]
       summarized_df
     }
   })
@@ -140,6 +155,7 @@ shinyServer(function(input, output){
       # User has not uploaded a file yet
       return(NULL)
     } else {
+      job_id = job_id()
       table= create_answer_index()
       if (nrow(table) > 50){
         max_count = min(50, nrow(table))
@@ -163,7 +179,22 @@ shinyServer(function(input, output){
           for (value_id in 1:length(this_row)) {
             value = this_row[value_id]
             html_table = paste(html_table, '<td>', sep="\n")
-            html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
+            if (value_id == 1) {
+              value_link = paste("https://crowdflower.com/jobs/",
+                                 job_id,
+                                 "/contributors/",
+                                 value,
+                                 sep=""
+              )
+              value_to_paste= paste("<a href=\"",
+                                    value_link,
+                                    "\" target=\"_blank\">",
+                                    value,
+                                    "</a>")
+              html_table = paste(html_table, value_to_paste, sep="\n") # pastes value!
+            } else {
+              html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
+            }
             html_table = paste(html_table, '</td>', sep="\n")
           }
         }
@@ -174,9 +205,22 @@ shinyServer(function(input, output){
     }
   })
   
+  output$percentageSelector <- renderUI({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+    sliderInput("percentage_chosen", "Percentage Range:",
+                     min = .01, max = 1, 
+                     value = c(0.01,1.00), 
+                     step = .01)
+    
+    }
+  })
+  
   
   output$trustSelector <- renderUI({
-    if (is.na(input$files[1])) {
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -276,7 +320,7 @@ shinyServer(function(input, output){
       questions = full_file_gold_answers()
       questions = gsub(questions, pattern=".\\gold", replacement="")
       questions = c("all", questions)
-      selectInput(inputId="question_chosen_contrib", label="In which columns should we look?", 
+      selectInput(inputId="question_chosen_search", label="In which columns should we look?", 
                   questions)
     }
   })
@@ -343,11 +387,20 @@ shinyServer(function(input, output){
       workers = workers()
       subsetted_workers = table_for_answer_distros()
       subsetted_workers = subsetted_workers$X_worker_id
-      print(subsetted_workers)
+    
       workers = workers[(workers$X_worker_id %in% subsetted_workers),]
-      print("Table Summary")
-      print(head(workers))
       workers
+    }
+  })
+  
+  output$summary_stats <- reactive({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+    workers = table_for_distros_summary()
+    
+    
     }
   })
   
@@ -523,8 +576,7 @@ shinyServer(function(input, output){
                                                group = responses_table_bind$group_var)
       
       
-      #responses_table_transformed = 
-      #  responses_table_transformed[order(-responses_table_transformed$numbers),]
+      
       responses_table_transformed_a = 
         responses_table_transformed[responses_table_transformed$group == 'all',]
       responses_table_transformed_a = 
@@ -550,12 +602,11 @@ shinyServer(function(input, output){
          responses_table_transformed_b = responses_table_transformed2         
        }
       
-      #print(responses_table_transformed_b)
+    
       responses_table_transformed <- rbind(responses_table_transformed_a, responses_table_transformed_b)
-      #print(responses_table_transformed)
-      responses_table_transformed$questions[responses_table_transformed$questions==""] = "\"\""
-      #View(responses_table_transformed)    
       
+      responses_table_transformed$questions[responses_table_transformed$questions==""] = "\"\""
+     
       p4 <- nPlot(numbers ~ questions, data=responses_table_transformed,
                   group = 'group', type='multiBarChart', 
                   dom='contrib_distros', width=800, margin=60, overflow="visible") 
