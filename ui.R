@@ -26,8 +26,13 @@ shinyUI(pageWithSidebar(
   mainPanel(
     tabsetPanel(
      tabPanel("Total Answer",
+      selectInput(inputId = "crowd_chosen", 
+                  label="Pick a crowd",
+                  c("All" = "all",
+                     "Trusted" = "false",
+                      "Untrusted" = "true")),
       uiOutput("questionSelector"),
-      selectInput(inputId = "state_chosen", label= " ",
+      selectInput(inputId = "state_chosen", label= "Pick a unit type",
                    c("All" = "all",
                      "Golds" = "golden",
                      "Units" = "normal")),
@@ -40,8 +45,13 @@ shinyUI(pageWithSidebar(
      tabPanel("Contributor Answers",
       textInput(inputId="id_chosen", 
                 label="Choose a worker id to graph:", value=""),
+      selectInput(inputId = "contrib_crowd_chosen", 
+                  label="Pick a crowd",
+                  c("All" = "all",
+                    "Trusted" = "false",
+                    "Untrusted" = "true")),
       uiOutput("questionSelectorContrib"),
-      selectInput(inputId = "state_chosen_contrib", label= " ",
+      selectInput(inputId = "state_chosen_contrib", label= "Pick a unit type",
                   c("All" = "all",
                     "Golds" = "golden",
                     "Units" = "normal")),
@@ -49,7 +59,7 @@ shinyUI(pageWithSidebar(
       uiOutput("graphDesc")
               ),
      tabPanel("Who the f@*k put that?",
-              uiOutput("answer_columns")),
+              htmlOutput("create_answer_index_table")),
      tabPanel("Set Milkshake")
     )
   ) #Close mainPanel

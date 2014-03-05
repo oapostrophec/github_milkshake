@@ -32,74 +32,7 @@ shinyServer(function(input, output){
       return(full)
     }
   })
-  
-  
-  
-#   find_contribs_by_distros <- reactive({
-#     if(is.na(input$files[1]) || is.null(input$files[1])){
-#       return(NULL)
-#     } else {
-#       
-#       full = full()
-#       
-#       answer_cols = grepl(pattern=".\\gold$", names(full)) &
-#         !grepl(pattern=".\\golden",names(full))
-#       gold_cols_names = names(full)[answer_cols]
-#       
-#       answer_cols_names = gsub(gold_cols_names, pattern=".\\gold", replacement="")
-#       #print("Answer cols names")
-#       #print(answer_cols_names)
-#       #     create_distros <- function(full = full, col_names){
-#       #       freq = table(full[,names(full) == col_names])
-#       #       freq = freq/length(freq)
-#       #       
-#       #       col_names_distros = lapply(col_names, freq)
-#       #       return(col_names_distros)
-#       #     }
-#       #   
-#       
-#       list_of_frames = list()
-#       
-#       
-#        ans  = answer_cols_names
-#        this_agg = lapply(unique(full$X_worker_id), function(x)  {
-#          portion= full[full$X_worker_id ==x,]
-#          col_names_distros = lapply(ans, function(x) {
-#            freq = table(portion[,names(portion) == x])
-#            freq = freq/length(freq)
-#            freq
-#          })
-#          return(col_names_distros)
-#       })
-#       
-#       worker_col = 'X_worker_id'
-#       ans  = c(answer_cols_names, worker_col)
-#       worker = full$X_worker_id[10]
-#       this_agg = lapply(ans, function(x)  {
-#         portion = full[ans == x,]
-#         col_names_distros = lapply(portion, function(x) {
-#           freq = table(portion[unique(full$X_worker_id) == x])
-#           freq = freq/length(freq)
-#           freq
-#         })
-#         return(col_names_distros)
-#       })
-#       all_distributions = rbind.fill(this_agg)
-#       
-#       
-#       worker_answers = ddply(full, .(X_worker_id), summarise,
-#                              answer_cols_names = create_distros(full=full,col_names = answer_cols_names[1]),
-#                              
-#                              channel = X_channel[1])
-#       
-#       worker_answers
-#     }
-#   })
-  
-#   output$search_distros <- renderTable ({
-#     y = find_contribs_by_distros()
-#     y
-#   })
+
   
   full_file_contrib_id <- reactive({
     if (is.na(input$files[1]) || input$id_chosen == "") {
@@ -155,7 +88,7 @@ shinyServer(function(input, output){
   })
   
   
-  output$answer_columns <- renderText(function(){
+  create_answer_index <- reactive({
     
     if (is.na(input$files[1])) {
       # User has not uploaded a file yet
@@ -166,12 +99,69 @@ shinyServer(function(input, output){
       gold_cols = grepl(".\\gold$", names(file)) & !grepl(".\\golden",names(file))
       gold_cols_names = names(file)[gold_cols]    
       ans_cols_names = gsub(gold_cols_names, pattern=".\\gold", replacement="")
-      answer_data = c(gold_cols_names, ans_cols_names)
+      #answer_data = c(gold_cols_names, ans_cols_names)
       #print(answer_data)
-      return(answer_data)
-      
+      file[is.na(file)] = ""
+      print('bout to melt')
+      print(head(file))
+      full_melt = file[,c("X_worker_id", ans_cols_names)]
+      print(names(full_melt))
+      print('bout to melt 2')
+      print(head(full_melt))
+      melted_df_full = melt(full_melt, id="X_worker_id")
+      melted_df_full$value = as.character(melted_df_full$value)
+      melted_df_full$variable = as.character(melted_df_full$variable)
+      melted_df_full$X_worker_id = as.numeric(as.character(melted_df_full$X_worker_id))
+     # melted_df_full$value[melted_df_full$value =="" ] = "\"\""
+      print(head(melted_df_full))
+      summarized_df = ddply(melted_df_full, .(X_worker_id, variable, value), summarize, 
+                    percent = 
+                      length(value)/sum(melted_df_full$X_worker_id == X_worker_id[1] & melted_df_full$variable == variable[1]), 
+                    num_j = sum(melted_df_full$X_worker_id == X_worker_id[1]))
+      print(head(summarized_df))
+      summarized_df
     }
   })
+  
+  output$create_answer_index_table <- renderText({
+    if (is.na(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      table= create_answer_index()
+      #if (nrow(table) > 50){
+      #  max_count = min(50, nrow(table))
+      #  table = table[1:max_count,]
+      #}
+      html_table = "<table border=1>"
+      #worker_table_ip$last_submit_ip = as.character(worker_table_ip$last_submit_ip)
+      table = rbind(names(table), table)
+      for (i in 1:nrow(table)) {
+        this_row = table[i,]
+        html_table = paste(html_table, '<tr>', sep="\n")
+        if (i == 1) {
+          for (value in this_row) {
+            html_table = paste(html_table, '<td>', sep="\n")
+            html_table = paste(html_table,
+                               paste("<b>",value, "</b>"),
+                               sep="\n") # pastes value!
+            html_table = paste(html_table, '</td>', sep="\n")
+          }
+        } else {
+          for (value_id in 1:length(this_row)) {
+            value = this_row[value_id]
+            html_table = paste(html_table, '<td>', sep="\n")
+            html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
+            html_table = paste(html_table, '</td>', sep="\n")
+          }
+        }
+        html_table = paste(html_table, '</tr>', sep="\n")
+      }
+      html_table = paste(html_table,"</table>", sep="\n")
+      paste(html_table)
+    }
+  })
+  
   
   output$trustSelector <- renderUI({
     if (is.na(input$files[1])) {
