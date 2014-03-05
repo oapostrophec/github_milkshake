@@ -40,7 +40,8 @@ shinyUI(pageWithSidebar(
         tabPanel("Answer Distros Graph",        
           uiOutput("titleTotalGraph"),
           showOutput("total_distros", "nvd3")),        
-        tabPanel("Graph Summary"))
+        tabPanel("Graph Summary",
+          htmlOutput("create_summary_table")))
       ),
      tabPanel("Contributor Answers",
       textInput(inputId="id_chosen", 
@@ -59,6 +60,9 @@ shinyUI(pageWithSidebar(
       uiOutput("graphDesc")
               ),
      tabPanel("Who the f@*k put that?",
+              textInput(inputId="answer_chosen",
+                        label="Search for:", value=""),
+              uiOutput("questionSelectorSearch"),
               htmlOutput("create_answer_index_table")),
      tabPanel("Set Milkshake")
     )
