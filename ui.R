@@ -9,6 +9,9 @@ require('plyr')
 require('rCharts')
 require('ggplot2')
 require('devtools')
+require('gridExtra')
+
+options(RCHART_LIB = 'polycharts')
 
 shinyUI(pageWithSidebar(
   headerPanel("Milkshaker"),
@@ -18,6 +21,7 @@ shinyUI(pageWithSidebar(
     uiOutput("trustSelector"),
     uiOutput("goldsSeen"),
     uiOutput("lastTimes"),
+    uiOutput("percentageSelector"),
     conditionalPanel(condition = '0==1',
     sliderInput("dummyslider", "", min=0, max=1, value=0)),
     tags$style(type="text/css", ".tab-content { overflow: visible; }", ".svg { height: 150%; }", ".y.axis{ ticks: 20; } ", 
@@ -26,46 +30,53 @@ shinyUI(pageWithSidebar(
   mainPanel(
     tabsetPanel(
      tabPanel("Total Answer",
-      selectInput(inputId = "crowd_chosen", 
-                  label="Pick a crowd",
-                  c("All" = "all",
-                     "Trusted" = "false",
-                      "Untrusted" = "true")),
-      uiOutput("questionSelector"),
-      selectInput(inputId = "state_chosen", label= "Pick a unit type",
-                   c("All" = "all",
-                     "Golds" = "golden",
-                     "Units" = "normal")),
       tabsetPanel(
         tabPanel("Answer Distros Graph",        
           uiOutput("titleTotalGraph"),
-          showOutput("total_distros", "nvd3")),        
+          showOutput("total_distros", "nvd3"),
+          uiOutput("questionSelector"),
+          selectInput(inputId = "crowd_chosen", 
+                       label="Pick a crowd",
+                         c("All" = "all",
+                           "Trusted" = "false",
+                           "Untrusted" = "true")),
+          selectInput(inputId = "state_chosen", label= "Pick a unit type",
+                       c("All" = "all",
+                         "Golds" = "golden",
+                         "Units" = "normal"))),        
         tabPanel("Graph Summary",
-          htmlOutput("create_summary_table")))
+          tableOutput("summary_stats_country"),
+          tableOutput("summary_stats_channel")))
       ),
-     tabPanel("Contributor Answers",
-      textInput(inputId="id_chosen", 
-                label="Choose a worker id to graph:", value=""),
-      selectInput(inputId = "contrib_crowd_chosen", 
-                  label="Pick a crowd",
-                  c("All" = "all",
-                    "Trusted" = "false",
-                    "Untrusted" = "true")),
-      uiOutput("questionSelectorContrib"),
-      selectInput(inputId = "state_chosen_contrib", label= "Pick a unit type",
-                  c("All" = "all",
-                    "Golds" = "golden",
-                    "Units" = "normal")),
-      showOutput("contrib_distros", "nvd3"),
-      uiOutput("graphDesc")
-              ),
      tabPanel("Who the f@*k put that?",
               textInput(inputId="answer_chosen",
                         label="Search for:", value=""),
-              uiOutput("percentageSelector"),
               uiOutput("questionSelectorSearch"),
               htmlOutput("create_answer_index_table")),
-     tabPanel("Set Milkshake")
+     tabPanel("Set Milkshake",
+              uiOutput("questionSelectorMilkshaker"),
+              uiOutput("answerSelectorMilkshaker"),
+      tabsetPanel(
+        tabPanel("Ploychart",
+              showOutput("milkshakeQuartile", "polycharts")),
+        tabPanel("Histogram",
+              plotOutput("milkshakeDensity"))
+              )),
+     tabPanel("Contributor Answers",
+              textInput(inputId="id_chosen", 
+                        label="Choose a worker id to graph:", value=""),
+              showOutput("contrib_distros", "nvd3"),
+              uiOutput("graphDesc"),
+              selectInput(inputId = "contrib_crowd_chosen", 
+                          label="Pick a crowd",
+                          c("All" = "all",
+                            "Trusted" = "false",
+                            "Untrusted" = "true")),
+              uiOutput("questionSelectorContrib"),
+              selectInput(inputId = "state_chosen_contrib", label= "Pick a unit type",
+                          c("All" = "all",
+                            "Golds" = "golden",
+                            "Units" = "normal")))
     )
   ) #Close mainPanel
 )) #Close ui.R

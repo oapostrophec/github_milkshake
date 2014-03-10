@@ -13,6 +13,7 @@ require('rCharts')
 require('ggplot2')
 require('devtools')
 require('stringr')
+require('gridExtra')
 
 options(stringsAsFactors = F)
 options(shiny.maxRequestSize=150*1024^2)
@@ -73,6 +74,115 @@ shinyServer(function(input, output){
     
   })
   
+  create_summarized_df <- reactive ({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+      file = full()  
+      gold_cols = grepl(".\\gold$", names(file)) & !grepl(".\\golden",names(file))
+      gold_cols_names = names(file)[gold_cols]    
+      ans_cols_names = gsub(gold_cols_names, pattern=".\\gold", replacement="")
+    
+      file[is.na(file)] = ""
+    
+      full_melt = file[,c("X_worker_id", ans_cols_names)]
+      melted_df_full = melt(full_melt, id="X_worker_id")
+    
+      melted_df_full$value = as.character(melted_df_full$value)
+      melted_df_full$variable = as.character(melted_df_full$variable)
+      melted_df_full$X_worker_id = as.numeric(as.character(melted_df_full$X_worker_id))
+      melted_df_full$value[melted_df_full$value =="" ] = "\"\""
+    
+      summarized_df = ddply(melted_df_full, .(X_worker_id,variable), summarize, 
+                            percent = prop.table(table(value)), 
+                            answer = names(table(value)),
+                            num_j = rep(sum(table(value)),times=length(table(value)))
+      )
+      summarized_df
+    }
+  })
+  
+  create_plot_df <- reactive({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+      
+      answers_df = create_summarized_df()
+      answers_df$X_worker_id = as.character(answers_df$X_worker_id)
+    
+      question_input = input$question_chosen_milkshaker
+      if(is.null(question_input)){
+        question_input = answers_df$variable[1]
+      }
+     
+      answer_plot = input$answer_chosen_milkshaker
+      if(is.null(answer_plot)){
+        answer_plot = answers_df$answer[1]
+      }
+    
+      answers_df = answers_df[answers_df$variable == question_input & answers_df$answer == answer_plot,]
+      answers_df
+      
+    }
+  })
+  
+  
+  output$milkshakeQuartile <- renderChart({
+    
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+      answers_df = create_plot_df()
+      print("Please just do as I say polychart")
+      print(head(answers_df))
+      p8 <- rPlot(percent ~ num_j, data = answers_df, type='point', color = 'num_j')
+      p8$addParams(height = 400, dom ='milkshakeQuartile')
+      p8
+    }
+  })
+  
+  output$milkshakeDensity <- renderPlot({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+      question_input = input$question_chosen_milkshaker
+      if(is.null(question_input)){
+        question_input = answers_df$variable[1]
+       }
+      empty <- ggplot()+geom_point(aes(1,1), colour="white") +
+        theme(                              
+          plot.background = element_blank(), 
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(), 
+          panel.border = element_blank(), 
+          panel.background = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks = element_blank()
+        )
+       plot_this = create_summarized_df()
+       plot_this = plot_this[plot_this$variable == question_input,]
+       print("Whats going on here")
+       print(head(plot_this))
+       box_plot <- ggplot(plot_this, aes(x=answer, y=percent)) + geom_boxplot(aes(fill=answer, color=answer))
+       box_plot
+       density_plot <- ggplot(plot_this, aes(percent, fill=answer)) + geom_density(alpha = 1) + coord_flip()
+       density_plot
+       scatter_plot <- ggplot(plot_this, aes(num_j, percent)) + geom_point(aes(color=answer)) +
+        theme(legend.position = c(1,1), legend.justification=c(1,1))
+       scatter_plot
+       grid.arrange(box_plot, empty, scatter_plot, density_plot, ncol=2, nrow=2, widths=c(4,1), heights=c(2,3))
+      
+    }
+  })
+  
+  
   workers <- reactive(function(){
     
     if (is.na(input$files[1])) {
@@ -98,44 +208,28 @@ shinyServer(function(input, output){
     }
   })
   
-  
   create_answer_index <- reactive({
     
-    if (is.na(input$files[1])) {
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
-      file = full()  
-      gold_cols = grepl(".\\gold$", names(file)) & !grepl(".\\golden",names(file))
-      gold_cols_names = names(file)[gold_cols]    
-      ans_cols_names = gsub(gold_cols_names, pattern=".\\gold", replacement="")
       
-      file[is.na(file)] = ""
+      summarized_df = create_summarized_df()
       
       field_name = input$question_chosen_search
       search_for = input$answer_chosen
       percentage = input$percentage_chosen
-      full_melt = file[,c("X_worker_id", ans_cols_names)]
       
-      melted_df_full = melt(full_melt, id="X_worker_id")
-      melted_df_full$value = as.character(melted_df_full$value)
-      melted_df_full$variable = as.character(melted_df_full$variable)
-      melted_df_full$X_worker_id = as.numeric(as.character(melted_df_full$X_worker_id))
-      melted_df_full$value[melted_df_full$value =="" ] = "\"\""
       
       if (field_name != "all"){
-        melted_df_full = melted_df_full[melted_df_full$variable == field_name,]
+        summarized_df = summarized_df[summarized_df$variable == field_name,]
       }
       
       if(search_for != ""){
-        melted_df_full = melted_df_full[melted_df_full$value == search_for,]
+        summarized_df = summarized_df[summarized_df$answer == search_for,]
       }
       
-      summarized_df = ddply(melted_df_full, .(X_worker_id,variable), summarize, 
-                    percent = prop.table(table(value)), 
-                    answer = names(table(value)),
-                    num_j = rep(sum(table(value)),times=length(table(value)))
-                    )
       
       print("Percentages Input")
       print(percentage)
@@ -266,7 +360,6 @@ shinyServer(function(input, output){
     }
   })
   
-  
   output$questionSelector <- renderUI({
     if (is.na(input$files[1])) {
       # User has not uploaded a file yet
@@ -288,6 +381,32 @@ shinyServer(function(input, output){
       questions = gsub(questions, pattern=".\\gold", replacement="")
       selectInput(inputId="question_chosen_contrib", label="Select question to display:", 
                   questions)
+    }
+  })
+  
+  output$questionSelectorMilkshaker <- renderUI({
+    if (is.na(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      questions = full_file_gold_answers()
+      questions = gsub(questions, pattern=".\\gold", replacement="")
+      selectInput(inputId="question_chosen_milkshaker", label="Select question to display:", 
+                  questions)
+    }
+  })
+  
+  output$answerSelectorMilkshaker <- renderUI({
+    if (is.na(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      question_subset = input$question_chosen_milkshaker
+      answers_list = create_summarized_df()
+      answers_list = answers_list[answers_list$variable == question_subset,]
+      answers = unique(answers_list$answer)
+      selectInput(inputId="answer_chosen_milkshaker", label="Select answer to display:", 
+                  answers)
     }
   })
   
@@ -393,73 +512,58 @@ shinyServer(function(input, output){
     }
   })
   
-  output$summary_stats <- reactive({
+  output$summary_stats_country <- renderTable({
     if (is.na(input$files[1]) || is.null(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
     workers = table_for_distros_summary()
+    total = nrow(workers)
+    stats_country_table = ddply(workers, .(country), summarise,
+                      num_contribs_country = table(country))
     
+    stats_country_table = stats_country_table[order(stats_country_table$num_contribs_country, decreasing=T),]
+    for(i in 1:nrow(stats_country_table)){
+    stats_country_table$percent[i] = stats_country_table$num_contribs_country[i]/sum(stats_country_table$num_contribs_country)
+    stats_country_table
+    }
     
+    if(nrow(stats_country_table) > 10){
+      max_count = min(10, nrow(stats_country_table))
+      stats_country_table = stats_country_table[1:max_count,]
+      }
+    
+    stats_country_table
     }
   })
   
-  output$create_summary_table <- renderText({
+  output$summary_stats_channel <- renderTable({
     if (is.na(input$files[1]) || is.null(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
-      job_id = job_id()
-      worker_table = table_for_distros_summary()
-      if (length(worker_table$X_worker_id) > 50){
-        max_count = min(50, nrow(worker_table))
-        worker_table = worker_table[1:max_count,]
+      workers = table_for_distros_summary()
+      total = nrow(workers)
+      
+      stats_channel_table = ddply(workers, .(channel), summarise,
+                                  num_contribs_channel = table(channel))
+      
+      stats_channel_table = stats_channel_table[order(stats_channel_table$num_contribs_channel, decreasing=T),]
+      
+      for(i in 1:nrow(stats_channel_table)){
+        stats_channel_table$percent[i] = stats_channel_table$num_contribs_channel[i]/sum(stats_channel_table$num_contribs_channel)
+        stats_channel_table
       }
       
-      html_table = "<table border=1>"
-      worker_table$last_submission = as.character(worker_table$last_submission)
-      worker_table = rbind(names(worker_table),
-                           worker_table)
-      for (i in 1:nrow(worker_table)) {
-        this_row = worker_table[i,]
-        html_table = paste(html_table, '<tr>', sep="\n")
-        if (i == 1) {
-          for (value in this_row) {
-            html_table = paste(html_table, '<td>', sep="\n")
-            html_table = paste(html_table,
-                               paste("<b>",value, "</b>"),
-                               sep="\n") # pastes value!
-            html_table = paste(html_table, '</td>', sep="\n")
-          }
-        } else {
-          for (value_id in 1:length(this_row)) {
-            value = this_row[value_id]
-            html_table = paste(html_table, '<td>', sep="\n")
-            if (value_id == 1) {
-              value_link = paste("https://crowdflower.com/jobs/",
-                                 job_id,
-                                 "/contributors/",
-                                 value,
-                                 sep=""
-              )
-              value_to_paste= paste("<a href=\"",
-                                    value_link,
-                                    "\" target=\"_blank\">",
-                                    value,
-                                    "</a>")
-              html_table = paste(html_table, value_to_paste, sep="\n") # pastes value!
-            } else {
-              html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
-            }
-            html_table = paste(html_table, '</td>', sep="\n")
-          }
-        }
-        html_table = paste(html_table, '</tr>', sep="\n")
+      if(nrow(stats_channel_table) > 10){
+        max_count = min(10, nrow(stats_channel_table))
+        stats_channel_table = stats_channel_table[1:max_count,]
       }
-      html_table = paste(html_table,"</table>", sep="\n")
-      paste(html_table)
+      
+      stats_channel_table
     }
   })
+
   
   output$total_distros <- renderChart({
     if (is.na(input$files[1])) {
