@@ -169,6 +169,27 @@ shinyServer(function(input, output){
     }
   })
   
+  output$suggestedRules <- renderText({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+    df = create_plot_df()
+    percent_min = min(input$y_axis_chosen)
+    percent_max = max(input$y_axis_chosen)
+    num_judgments = input$x_axis_chosen
+    rule = df$answer[1]
+    question = df$variable[1]
+    judgment = paste("Set Activation Threshold to", num_judgments, "judgments.", sep=" ")
+    rule = paste("Enter (", rule, ") into the Acceptable answer distribution for ", question,
+                 ".", sep="")
+    min_max = paste("Set the Min percentage to ", percent_min, ". Set the Max percentage to ",
+                    percent_max, ".", sep="")
+    
+    suggested_rules = paste(judgment, rule, min_max, sep="<br>")
+    }
+  })
+  
   output$milkshakeQuartile <- renderPlot({
     
     if (is.na(input$files[1]) || is.null(input$files[1])) {
@@ -189,6 +210,90 @@ shinyServer(function(input, output){
       print(set_scatter_plot)
     }
   })
+  
+  create_work_reject <- reactive({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+      workers = workers()
+      table = create_plot_df()
+      
+      judgments_threshold = input$x_axis_chosen
+      max_percent_accepted = max(input$y_axis_chosen)
+      min_percent_accepted = min(input$y_axis_chosen)
+      
+      
+      table = table[table$num_j > judgments_threshold,] 
+      print("Table Judgs")
+      print(head(table))
+      
+      table = table[table$percent < min_percent_accepted  || table$percent > max_percent_accepted,]
+      print("Table after Percent")
+      print(head(table))
+      
+      print("WTF is yer probles")
+      worker_ids = table$X_worker_id
+      print(worker_ids)
+      
+      workers_lost = workers[(workers$X_worker_id %in% worker_ids),]
+      print(workers_lost)
+      
+      workers_lost
+    }
+  })
+  
+  output$create_rejected_html_table <- renderText ({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+      job_id =  job_id()
+      worker_table = create_work_reject()
+      html_table = "<table border=1>"
+      worker_table$last_submission = as.character(worker_table$last_submission)
+      worker_table = rbind(names(worker_table),
+                           worker_table)
+      for (i in 1:nrow(worker_table)) {
+        this_row = worker_table[i,]
+        html_table = paste(html_table, '<tr>', sep="\n")
+        if (i == 1) {
+          for (value in this_row) {
+            html_table = paste(html_table, '<td>', sep="\n")
+            html_table = paste(html_table,
+                               paste("<b>",value, "</b>"),
+                               sep="\n") # pastes value!
+            html_table = paste(html_table, '</td>', sep="\n")
+          }
+        } else {
+          for (value_id in 1:length(this_row)) {
+            value = this_row[value_id]
+            html_table = paste(html_table, '<td>', sep="\n")
+            if (value_id == 1) {
+              value_link = paste("https://crowdflower.com/jobs/",
+                                 job_id,
+                                 "/contributors/",
+                                 value,
+                                 sep=""
+              )
+              value_to_paste= paste("<a href=\"",
+                                    value_link,
+                                    "\" target=\"_blank\">",
+                                    value,
+                                    "</a>")
+              html_table = paste(html_table, value_to_paste, sep="\n") # pastes value!
+            } else {
+              html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
+            }
+            html_table = paste(html_table, '</td>', sep="\n")
+          }
+        }
+        html_table = paste(html_table, '</tr>', sep="\n")
+      }
+      html_table = paste(html_table,"</table>", sep="\n")
+      return(html_table)
+    }
+})
   
   output$milkshakeDensity <- renderPlot({
     if (is.na(input$files[1]) || is.null(input$files[1])) {
@@ -525,20 +630,20 @@ shinyServer(function(input, output){
       }
       
       ###Time Conversion Holders
-      max_input_time = max(input$times_chosen)*3600
-      min_input_time = min(input$times_chosen)*3600
-      convert_max_worker = as.numeric(max(workers$last_submission))
-      convert_min_worker = as.numeric(min(workers$last_submission))
-      min_worker = min(workers$last_submission)
-      max_worker = max(workers$last_submission)
+     max_input_time = max(input$times_chosen)*3600
+     min_input_time = min(input$times_chosen)*3600
+     convert_max_worker = as.numeric(max(workers$last_submission))
+     convert_min_worker = as.numeric(min(workers$last_submission))
+     min_worker = min(workers$last_submission)
+     max_worker = max(workers$last_submission)
       
-      if(max_input_time != convert_max_worker || min_input_time != convert_min_worker){
-        ids = workers$X_worker_id[workers$last_submission <= (min_worker + max_input_time) &
-                                    workers$last_submission >= (min_worker + min_input_time)]
+     if(max_input_time != convert_max_worker || min_input_time != convert_min_worker){
+       ids = workers$X_worker_id[workers$last_submission <= (min_worker + max_input_time) &
+                                   workers$last_submission >= (min_worker + min_input_time)]
         
         
-        full_file = full_file[(full_file$X_worker_id %in% ids),]
-      }
+       full_file = full_file[(full_file$X_worker_id %in% ids),]
+     }
       full_file
     }
   })
@@ -569,7 +674,8 @@ shinyServer(function(input, output){
     
     stats_country_table = stats_country_table[order(stats_country_table$num_contribs_country, decreasing=T),]
     for(i in 1:nrow(stats_country_table)){
-    stats_country_table$percent[i] = stats_country_table$num_contribs_country[i]/sum(stats_country_table$num_contribs_country)
+    stats_country_table$percent[i] = 
+      stats_country_table$num_contribs_country[i]/sum(stats_country_table$num_contribs_country)
     stats_country_table
     }
     
@@ -596,7 +702,8 @@ shinyServer(function(input, output){
       stats_channel_table = stats_channel_table[order(stats_channel_table$num_contribs_channel, decreasing=T),]
       
       for(i in 1:nrow(stats_channel_table)){
-        stats_channel_table$percent[i] = stats_channel_table$num_contribs_channel[i]/sum(stats_channel_table$num_contribs_channel)
+        stats_channel_table$percent[i] =
+          stats_channel_table$num_contribs_channel[i]/sum(stats_channel_table$num_contribs_channel)
         stats_channel_table
       }
       
