@@ -10,6 +10,7 @@ require('rCharts')
 require('ggplot2')
 require('devtools')
 require('gridExtra')
+require('reshape2')
 
 options(RCHART_LIB = 'polycharts')
 
@@ -22,8 +23,11 @@ shinyUI(pageWithSidebar(
     uiOutput("goldsSeen"),
     uiOutput("lastTimes"),
     uiOutput("percentageSelector"),
+    uiOutput("xSelector"),
+    uiOutput("ySelector"),
     conditionalPanel(condition = '0==1',
     sliderInput("dummyslider", "", min=0, max=1, value=0)),
+    htmlOutput("ddLewis"),
     tags$style(type="text/css", ".tab-content { overflow: visible; }", ".svg { height: 150%; }", ".y.axis{ ticks: 20; } ", 
                ".yAxis { scale: 20;}")
   ),
@@ -57,10 +61,10 @@ shinyUI(pageWithSidebar(
               uiOutput("questionSelectorMilkshaker"),
               uiOutput("answerSelectorMilkshaker"),
       tabsetPanel(
-        tabPanel("Ploychart",
-              showOutput("milkshakeQuartile", "polycharts")),
         tabPanel("Histogram",
-              plotOutput("milkshakeDensity"))
+              plotOutput("milkshakeDensity")),
+        tabPanel("Set Milkshake",
+                 plotOutput("milkshakeQuartile"))
               )),
      tabPanel("Contributor Answers",
               textInput(inputId="id_chosen", 

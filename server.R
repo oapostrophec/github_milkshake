@@ -14,11 +14,19 @@ require('ggplot2')
 require('devtools')
 require('stringr')
 require('gridExtra')
+require('reshape2')
 
 options(stringsAsFactors = F)
 options(shiny.maxRequestSize=150*1024^2)
 
 shinyServer(function(input, output){
+  
+  output$ddLewis <- renderText ({
+    image_path = "http://cf-public-view.s3.amazonaws.com/coolstuff/milkshake_pic.jpg"
+    html_image = paste("<img src=", image_path, " width=\"65%\"/>", sep="")
+    paste(html_image)
+    
+  })
   
   ### read in file    
   full <- reactive(function() {
@@ -128,19 +136,57 @@ shinyServer(function(input, output){
     }
   })
   
+  output$xSelector <- renderUI({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+      index_distros = create_summarized_df()
+      threshold_min = min(index_distros$num_j, na.rm=T)
+      threshold_max = max(index_distros$num_j, na.rm=T)
+      default = mean(index_distros$num_j)
+      sliderInput(inputId="x_axis_chosen",
+                   label="Milkshake Num Judgments to Threshold",
+                   min = threshold_min, max = threshold_max,
+                   step = 1, value = default)
+    
+    }
+  })
   
-  output$milkshakeQuartile <- renderChart({
+  output$ySelector <- renderUI({
+    if (is.na(input$files[1]) || is.null(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    }else{
+    threshold_min = 0.00
+    threshold_max = 1.05
+    
+    sliderInput(inputId="y_axis_chosen",
+                 label="Milkshake Answer Percent Range to Threshold",
+                 min = threshold_min, max = threshold_max,
+                 step = 0.01, value=c(threshold_min + .01, threshold_max - .01))
+    
+    }
+  })
+  
+  output$milkshakeQuartile <- renderPlot({
     
     if (is.na(input$files[1]) || is.null(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
       answers_df = create_plot_df()
-      print("Please just do as I say polychart")
-      print(head(answers_df))
-      p8 <- rPlot(percent ~ num_j, data = answers_df, type='point', color = 'num_j')
-      p8$addParams(height = 400, dom ='milkshakeQuartile')
-      p8
+      x_threshold = input$x_axis_chosen
+      max_y_threshold = max(input$y_axis_chosen)
+      min_y_threshold = min(input$y_axis_chosen)
+      set_scatter_plot <- ggplot(answers_df, aes(num_j, percent)) + geom_point(aes(color=answer)) +
+        geom_vline(xintercept = x_threshold, color="darkorange") +
+        geom_hline(yintercept = max_y_threshold, color="darkblue") +
+        geom_hline(yintercept = min_y_threshold, color="darkblue")
+      #p8 <- rPlot(percent ~ num_j, data = answers_df, type='point', color = 'num_j')
+      #p8$addParams(height = 400, dom ='milkshakeQuartile')
+      #p8
+      print(set_scatter_plot)
     }
   })
   
@@ -168,16 +214,15 @@ shinyServer(function(input, output){
         )
        plot_this = create_summarized_df()
        plot_this = plot_this[plot_this$variable == question_input,]
-       print("Whats going on here")
-       print(head(plot_this))
+        
        box_plot <- ggplot(plot_this, aes(x=answer, y=percent)) + geom_boxplot(aes(fill=answer, color=answer))
        box_plot
        density_plot <- ggplot(plot_this, aes(percent, fill=answer)) + geom_density(alpha = 1) + coord_flip()
        density_plot
        scatter_plot <- ggplot(plot_this, aes(num_j, percent)) + geom_point(aes(color=answer)) +
-        theme(legend.position = c(1,1), legend.justification=c(1,1))
+        theme(legend.position = "none")
        scatter_plot
-       grid.arrange(box_plot, empty, scatter_plot, density_plot, ncol=2, nrow=2, widths=c(4,1), heights=c(2,3))
+       grid.arrange(box_plot, empty, scatter_plot, density_plot, ncol=2, nrow=2, widths=c(4,2), heights=c(2,3))
       
     }
   })
@@ -405,7 +450,7 @@ shinyServer(function(input, output){
       answers_list = create_summarized_df()
       answers_list = answers_list[answers_list$variable == question_subset,]
       answers = unique(answers_list$answer)
-      selectInput(inputId="answer_chosen_milkshaker", label="Select answer to display:", 
+      selectInput(inputId="answer_chosen_milkshaker", label="Select answer to display in Polychart:", 
                   answers)
     }
   })
