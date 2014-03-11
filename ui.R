@@ -64,7 +64,10 @@ shinyUI(pageWithSidebar(
         tabPanel("Histogram",
               plotOutput("milkshakeDensity")),
         tabPanel("Set Milkshake",
-                 plotOutput("milkshakeQuartile"))
+                 plotOutput("milkshakeQuartile"),
+                 htmlOutput("suggestedRules"),
+                 h4("Current work you will lose if you implement the rule given above:"),
+                 htmlOutput("create_rejected_html_table"))
               )),
      tabPanel("Contributor Answers",
               textInput(inputId="id_chosen", 
