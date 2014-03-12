@@ -17,6 +17,9 @@ options(RCHART_LIB = 'polycharts')
 shinyUI(pageWithSidebar(
   headerPanel("Milkshaker"),
   sidebarPanel(
+    #includeHTML("../shared/mixpanel.js"),
+    htmlOutput("mixpanelEvent_job_id"),
+    HTML("<script>mixpanel.track('milkshaker')</script>"),
     fileInput("files", h4("Select a full report:"), multiple=FALSE, accept = 
                 c('text/csv', 'text/comma-separated-values,text/plain', '.csv')),
     uiOutput("trustSelector"),
@@ -37,6 +40,7 @@ shinyUI(pageWithSidebar(
                ".yAxis { scale: 20;}")
   ),
   mainPanel(
+    HTML("<script>mixpanel.track_links('a', 'milkshaker tab_or_link_click', function(ele) { return { type: $(ele).text()}})</script>"),
     tabsetPanel(
      tabPanel("Total Answer",
       tabsetPanel(

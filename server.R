@@ -29,8 +29,8 @@ shinyServer(function(input, output){
   })
   
   ### read in file    
-  full <- reactive(function() {
-    if (is.na(input$files[1])) {
+  full <- reactive({
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -43,7 +43,7 @@ shinyServer(function(input, output){
   })
 
   job_id <- reactive({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -54,8 +54,12 @@ shinyServer(function(input, output){
     }
   })
   
+  output$mixpanelEvent_job_id <- renderText({
+    paste0("<script>mixpanel.track('milkshaker job_id',{job_id: ",job_id(),"})</script>")
+  })
+  
   full_file_contrib_id <- reactive({
-    if (is.na(input$files[1]) || input$id_chosen == "") {
+    if (is.null(input$files) || is.na(input$files[1]) || input$id_chosen == "") {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -70,7 +74,7 @@ shinyServer(function(input, output){
   
   ###Grab Answer and Gold Columns
   full_file_gold_answers <- reactive({
-    if (is.na(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -83,7 +87,7 @@ shinyServer(function(input, output){
   })
   
   create_summarized_df <- reactive ({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -137,7 +141,7 @@ shinyServer(function(input, output){
   })
   
   output$xSelector <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -154,7 +158,7 @@ shinyServer(function(input, output){
   })
   
   output$ySelector <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -170,7 +174,7 @@ shinyServer(function(input, output){
   })
   
   output$suggestedRules <- renderText({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -192,7 +196,7 @@ shinyServer(function(input, output){
   
   output$milkshakeQuartile <- renderPlot({
     
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -212,7 +216,7 @@ shinyServer(function(input, output){
   })
   
   create_work_reject <- reactive({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -244,7 +248,7 @@ shinyServer(function(input, output){
   })
   
   output$create_rejected_html_table <- renderText ({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -296,7 +300,7 @@ shinyServer(function(input, output){
 })
   
   output$milkshakeDensity <- renderPlot({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -333,9 +337,9 @@ shinyServer(function(input, output){
   })
   
   
-  workers <- reactive(function(){
+  workers <- reactive({
     
-    if (is.na(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
       
@@ -360,7 +364,7 @@ shinyServer(function(input, output){
   
   create_answer_index <- reactive({
     
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     }else{
@@ -395,7 +399,7 @@ shinyServer(function(input, output){
   })
   
   output$create_answer_index_table <- renderText({
-    if (is.na(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -450,7 +454,7 @@ shinyServer(function(input, output){
   })
   
   output$percentageSelector <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -464,7 +468,7 @@ shinyServer(function(input, output){
   
   
   output$trustSelector <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -478,7 +482,7 @@ shinyServer(function(input, output){
   })
   
   output$goldsSeen <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -492,7 +496,7 @@ shinyServer(function(input, output){
   })
   
   output$lastTimes <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -511,7 +515,7 @@ shinyServer(function(input, output){
   })
   
   output$questionSelector <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -523,7 +527,7 @@ shinyServer(function(input, output){
   })
   
   output$questionSelectorContrib <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -535,7 +539,7 @@ shinyServer(function(input, output){
   })
   
   output$questionSelectorMilkshaker <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -547,7 +551,7 @@ shinyServer(function(input, output){
   })
   
   output$answerSelectorMilkshaker <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -561,7 +565,7 @@ shinyServer(function(input, output){
   })
   
   output$titleTotalGraph <- renderUI({
-    if (is.null(input$files[1]) || is.na(input$files[1])) {
+    if (is.null(input$files[1]) || is.na(input$files)) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -582,7 +586,7 @@ shinyServer(function(input, output){
   })    
   
   output$questionSelectorSearch <- renderUI({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -595,7 +599,7 @@ shinyServer(function(input, output){
   })
   
   table_for_answer_distros <- reactive({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -649,7 +653,7 @@ shinyServer(function(input, output){
   })
   
   table_for_distros_summary <- reactive({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -663,7 +667,7 @@ shinyServer(function(input, output){
   })
   
   output$summary_stats_country <- renderTable({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -689,7 +693,7 @@ shinyServer(function(input, output){
   })
   
   output$summary_stats_channel <- renderTable({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -718,7 +722,7 @@ shinyServer(function(input, output){
 
   
   output$total_distros <- renderChart({
-    if (is.na(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -770,7 +774,7 @@ shinyServer(function(input, output){
   })
   
   output$contrib_distros <- renderChart({
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
@@ -875,7 +879,7 @@ shinyServer(function(input, output){
   })
   
   output$graphDesc <- renderUI({ 
-    if (is.na(input$files[1]) || is.null(input$files[1])) {
+    if (is.null(input$files) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
     } else {
