@@ -17,6 +17,7 @@ options(RCHART_LIB = 'polycharts')
 shinyUI(pageWithSidebar(
   headerPanel("Milkshaker"),
   sidebarPanel(
+    HTML("<script>mixpanel.track('milkshaker')</script>"),
     fileInput("files", h4("Select a full report:"), multiple=FALSE, accept = 
                 c('text/csv', 'text/comma-separated-values,text/plain', '.csv')),
     uiOutput("trustSelector"),
