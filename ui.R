@@ -18,13 +18,13 @@ shinyUI(pageWithSidebar(
   headerPanel("Milkshaker"),
   sidebarPanel(
     #includeHTML("../shared/mixpanel.js"),
-    htmlOutput("mixpanelEvent_job_id"),
-    HTML("<script>mixpanel.track('milkshaker')</script>"),
+    #htmlOutput("mixpanelEvent_job_id"),
+    #HTML("<script>mixpanel.track('milkshaker')</script>"),
     fileInput("files", h4("Select a full report:"), multiple=FALSE, accept = 
                 c('text/csv', 'text/comma-separated-values,text/plain', '.csv')),
     uiOutput("trustSelector"),
-    uiOutput("goldsSeen"),
-    uiOutput("lastTimes"),
+    #uiOutput("goldsSeen"),
+    #uiOutput("lastTimes"),
     h4("***"),
     p("Adjuster For Wtfpt?"),
     uiOutput("percentageSelector"),
@@ -44,10 +44,10 @@ shinyUI(pageWithSidebar(
     tabsetPanel(
      tabPanel("Total Answer",
       tabsetPanel(
-        tabPanel("Answer Distros Graph",        
+        tabPanel("Answer Distros Graph",
+          uiOutput("questionSelector"),
           uiOutput("titleTotalGraph"),
           showOutput("total_distros", "nvd3"),
-          uiOutput("questionSelector"),
           selectInput(inputId = "crowd_chosen", 
                        label="Pick a crowd",
                          c("All" = "all",
