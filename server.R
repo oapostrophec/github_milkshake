@@ -95,8 +95,8 @@ shinyServer(function(input, output){
                               untrusted = X_tainted[1],
                               trust = X_trust[1],
                               num_judgments = length(X_unit_id),
-                              num_golds_seen = length(X_unit_id[X_golden == 'true']),
-                              golds_missed = paste(unique(X_unit_id[X_missed == 'true']), collapse="<br>"),
+                              #num_golds_seen = length(X_unit_id[X_golden == 'true']),
+                              #golds_missed = paste(unique(X_unit_id[X_missed == 'true']), collapse="<br>"),
                               last_submission = X_created_at[length(X_created_at)])
       workers_answers  
     }
@@ -281,15 +281,17 @@ shinyServer(function(input, output){
       judgments_threshold = input$x_axis_chosen
       max_percent_accepted = max(input$y_axis_chosen)
       min_percent_accepted = min(input$y_axis_chosen)
-      
-      
-      table = table[table$num_j > judgments_threshold,] 
+      #print(min_percent_accepted)
 
+      table_1 = table[(table$num_j > judgments_threshold & table$percent < min_percent_accepted),]
+      #table = table[(table$percent < min_percent_accepted),]
+      table_2 = table[(table$num_j > judgments_threshold & table$percent > max_percent_accepted),]
       
-      table = table[(table$percent < min_percent_accepted)  || (table$percent > max_percent_accepted),]
-
-      worker_ids = table$X_worker_id
-
+      print(head(table))
+     # worker_ids = table_1$X_worker_id
+      worker_ids = c(table_2$X_worker_id, table_1$X_worker_id)
+      print("Workers lost")
+      print(worker_ids)
       
       workers_lost = workers[(workers$X_worker_id %in% worker_ids),]
       
