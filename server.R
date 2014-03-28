@@ -299,57 +299,32 @@ shinyServer(function(input, output){
     }
   })
   
-  output$create_rejected_html_table <- renderText ({
+  output$createAnswerRejects <- renderDataTable({
     if (is.null(input$files[1]) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
-    }else{
-      job_id =  job_id()
-      worker_table = create_work_reject()
-      html_table = "<table border=1>"
-      worker_table$last_submission = as.character(worker_table$last_submission)
-      worker_table = rbind(names(worker_table),
-                           worker_table)
-      for (i in 1:nrow(worker_table)) {
-        this_row = worker_table[i,]
-        html_table = paste(html_table, '<tr>', sep="\n")
-        if (i == 1) {
-          for (value in this_row) {
-            html_table = paste(html_table, '<td>', sep="\n")
-            html_table = paste(html_table,
-                               paste("<b>",value, "</b>"),
-                               sep="\n") # pastes value!
-            html_table = paste(html_table, '</td>', sep="\n")
-          }
-        } else {
-          for (value_id in 1:length(this_row)) {
-            value = this_row[value_id]
-            html_table = paste(html_table, '<td>', sep="\n")
-            if (value_id == 1) {
-              value_link = paste("https://crowdflower.com/jobs/",
-                                 job_id,
-                                 "/contributors/",
-                                 value,
-                                 sep=""
-              )
-              value_to_paste= paste("<a href=\"",
-                                    value_link,
-                                    "\" target=\"_blank\">",
-                                    value,
-                                    "</a>")
-              html_table = paste(html_table, value_to_paste, sep="\n") # pastes value!
-            } else {
-              html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
-            }
-            html_table = paste(html_table, '</td>', sep="\n")
-          }
-        }
-        html_table = paste(html_table, '</tr>', sep="\n")
+    } else {
+      table = create_work_reject()
+      job_id = job_id()
+    
+      workers = table$X_worker_id
+      
+      for(i in 1:nrow(table)){
+        table$X_worker_id[i] = 
+          paste('<a href=\"https://crowdflower.com/jobs/', job_id,
+                '/contributors/', table$X_worker_id[i], 
+                '\">', table$X_worker_id[i], '</a>', sep="")
+        
+        table$reject[i] = 
+          paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
+                data-toggle=\"button\" id=\"get', workers[i],
+                '\" type=\"button\">Reject</button>', sep="")
+        
       }
-      html_table = paste(html_table,"</table>", sep="\n")
-      return(html_table)
+      
+      table
     }
-})
+  })
   
   output$milkshakeDensity <- renderPlot({
     if (is.null(input$files[1]) || is.na(input$files[1])) {
@@ -392,7 +367,6 @@ shinyServer(function(input, output){
 
   
   create_answer_index <- reactive({
-    
     if (is.null(input$files[1]) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
@@ -417,8 +391,8 @@ shinyServer(function(input, output){
       
       if(min(percentage) != 0.01 || max(percentage) != 1.0){
        
-        summarized_df = 
-          summarized_df[summarized_df$percent >= min(percentage) & summarized_df$percent <= max(percentage),]
+      summarized_df = 
+       summarized_df[summarized_df$percent >= min(percentage) & summarized_df$percent <= max(percentage),]
       }
       
       summarized_df = summarized_df[order(summarized_df$num_j, decreasing=T),]
@@ -433,70 +407,20 @@ shinyServer(function(input, output){
     } else {
       job_id = job_id()
       table = create_answer_index()
+      workers = table$X_worker_id
       
-      
-#      for(i in nrow(table)){
-#       table$X_worker_id[i] = paste("https://crowdflower.com/jobs/", job_id,
-#                                       "/contributors/", table$X_worker_id[i],
-#                                                    sep="")
-#       }
-      
+      for(i in 1:nrow(table)){
+       table$X_worker_id[i] = 
+         paste('<a href=\"https://crowdflower.com/jobs/', job_id,
+                        '/contributors/', table$X_worker_id[i], 
+                         '\">', table$X_worker_id[i], '</a>', sep="")
+       
+       table$reject[i] = 
+          paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
+                         data-toggle=\"button\" id=\"get', workers[i],
+                         '\" type=\"button\">Reject</button>', sep="")
+       } 
       table
-    }
-  })
-
-  output$create_answer_index_table <- renderText({
-    if (is.null(input$files[1]) || is.na(input$files[1])) {
-      # User has not uploaded a file yet
-      return(NULL)
-    } else {
-      job_id = job_id()
-      table= create_answer_index()
-      if (nrow(table) > 50){
-        max_count = min(50, nrow(table))
-        table = table[1:max_count,]
-      }
-      html_table = "<table border=1>"
-      #worker_table_ip$last_submit_ip = as.character(worker_table_ip$last_submit_ip)
-      table = rbind(names(table), table)
-      for (i in 1:nrow(table)) {
-        this_row = table[i,]
-        html_table = paste(html_table, '<tr>', sep="\n")
-        if (i == 1) {
-          for (value in this_row) {
-            html_table = paste(html_table, '<td>', sep="\n")
-            html_table = paste(html_table,
-                               paste("<b>",value, "</b>"),
-                               sep="\n") # pastes value!
-            html_table = paste(html_table, '</td>', sep="\n")
-          }
-        } else {
-          for (value_id in 1:length(this_row)) {
-            value = this_row[value_id]
-            html_table = paste(html_table, '<td>', sep="\n")
-            if (value_id == 1) {
-              value_link = paste("https://crowdflower.com/jobs/",
-                                 job_id,
-                                 "/contributors/",
-                                 value,
-                                 sep=""
-              )
-              value_to_paste= paste("<a href=\"",
-                                    value_link,
-                                    "\" target=\"_blank\">",
-                                    value,
-                                    "</a>")
-              html_table = paste(html_table, value_to_paste, sep="\n") # pastes value!
-            } else {
-              html_table = paste(html_table, value, "&nbsp;&nbsp;", sep="\n") # pastes value!
-            }
-            html_table = paste(html_table, '</td>', sep="\n")
-          }
-        }
-        html_table = paste(html_table, '</tr>', sep="\n")
-      }
-      html_table = paste(html_table,"</table>", sep="\n")
-      paste(html_table)
     }
   })
   
@@ -558,7 +482,8 @@ shinyServer(function(input, output){
       num_subset_workers = length(unique(subset_workers$X_worker_id))
       num_judgments = length(subset_workers$X_worker_id)
       if (num_subset_workers != num_total_workers){
-        puts = paste("Answer distributions for", num_subset_workers, "of", num_total_workers, "total workers |", 
+        puts = paste("Answer distributions for", 
+                     num_subset_workers, "of", num_total_workers, "total workers |", 
                      num_judgments, "judgments used", sep=" ")
       } else {
         puts = paste("Pulling answer distributions from", num_total_workers, "workers |", 
@@ -634,7 +559,9 @@ shinyServer(function(input, output){
     stats_country_table = ddply(workers, .(country), summarise,
                       num_contribs_country = table(country))
     
-    stats_country_table = stats_country_table[order(stats_country_table$num_contribs_country, decreasing=T),]
+    stats_country_table = 
+      stats_country_table[order(stats_country_table$num_contribs_country, decreasing=T),]
+    
     for(i in 1:nrow(stats_country_table)){
     stats_country_table$percent[i] = 
       stats_country_table$num_contribs_country[i]/sum(stats_country_table$num_contribs_country)
@@ -661,7 +588,8 @@ shinyServer(function(input, output){
       stats_channel_table = ddply(workers, .(channel), summarise,
                                   num_contribs_channel = table(channel))
       
-      stats_channel_table = stats_channel_table[order(stats_channel_table$num_contribs_channel, decreasing=T),]
+      stats_channel_table = 
+        stats_channel_table[order(stats_channel_table$num_contribs_channel, decreasing=T),]
       
       for(i in 1:nrow(stats_channel_table)){
         stats_channel_table$percent[i] =
@@ -711,7 +639,8 @@ shinyServer(function(input, output){
       if (nrow(responses_table_transformed) > 9 ) {
         responses_table_transformed1 = responses_table_transformed[1:9,]
         responses_table_transformed1[10,] =
-          c("Other Values", sum(responses_table_transformed$numbers[10:length(responses_table_transformed)]),
+          c("Other Values", 
+            sum(responses_table_transformed$numbers[10:length(responses_table_transformed)]),
             chosen_q)
         responses_table_transformed = responses_table_transformed1
       }
@@ -800,7 +729,8 @@ shinyServer(function(input, output){
       if (nrow(responses_table_transformed_a) > 9 ) {
           responses_table_transformed1 = responses_table_transformed_a[1:9,]
           responses_table_transformed1[10,] =
-            c("Other Values All", sum(responses_table_transformed_a$numbers[10:length(responses_table_transformed_a)]),
+            c("Other Values All", 
+              sum(responses_table_transformed_a$numbers[10:length(responses_table_transformed_a)]),
               chosen_q)
           responses_table_transformed_a = responses_table_transformed1
         }
@@ -808,7 +738,8 @@ shinyServer(function(input, output){
        if(nrow(responses_table_transformed_b) > 9){
          responses_table_transformed2 = responses_table_transformed_b[1:9,]
          responses_table_transformed2[10,] =
-           c("Other Values Individual", sum(responses_table_transformed_b$numbers[10:length(responses_table_transformed_b)]),
+           c("Other Values Individual", 
+             sum(responses_table_transformed_b$numbers[10:length(responses_table_transformed_b)]),
              chosen_q)
          responses_table_transformed_b = responses_table_transformed2         
        }
@@ -834,43 +765,10 @@ shinyServer(function(input, output){
       return(NULL)
     } else {
       profile_id = input$id_chosen
-      puts <- paste('This graph compares answers from', profile_id, 'with the total distributions of the job.', sep=" ")
+      puts <- paste('This graph compares answers from', 
+                    profile_id, 'with the total distributions of the job.', sep=" ")
       puts
     }   
   })
-  
-  
-  #   output$goldsSeen <- renderUI({
-  #     if (is.null(input$files[1]) || is.na(input$files[1])) {
-  #       # User has not uploaded a file yet
-  #       return(NULL)
-  #     } else {
-  #       full_file = workers()
-  #       golds_range = range(full_file$num_golds_seen)
-  #       sliderInput(inputId = "golds_chosen",
-  #                   label = "Golds Seen Range",
-  #                   min = golds_range[1] - 1, max = golds_range[2] + 1,
-  #                   value = c(golds_range[1] - 1, golds_range[2] + 1), step= 1)
-  #     }
-  #   })
-  
-  #   output$lastTimes <- renderUI({
-  #     if (is.null(input$files[1]) || is.na(input$files[1])) {
-  #       # User has not uploaded a file yet
-  #       return(NULL)
-  #     } else {
-  #       full_file = workers()
-  #       times_range = range(full_file$last_submission)
-  #       num_time2 = as.numeric(times_range[2])
-  #       num_time1 = as.numeric(times_range[1])
-  #       max_time = ((num_time2 - num_time1)/3600)
-  #       sliderInput(inputId = "times_chosen",
-  #                   label = "Last Submit Times by Hour",
-  #                   min = 0, max = max_time,
-  #                   value = c(0, max_time),
-  #                   step = .5)
-  #       
-  #     }
-  #   })
   
 })

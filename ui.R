@@ -34,7 +34,6 @@ shinyUI(pageWithSidebar(
     uiOutput("ySelector"),
     conditionalPanel(condition = '0==1',
     sliderInput("dummyslider", "", min=0, max=1, value=0)),
-    p("DDLew and his Milkshake:"),
     htmlOutput("ddLewis"),
     tags$style(type="text/css", ".tab-content { overflow: visible; }", ".svg { height: 150%; }", ".y.axis{ ticks: 20; } ", 
                ".yAxis { scale: 20;}")
@@ -77,7 +76,8 @@ shinyUI(pageWithSidebar(
                  plotOutput("milkshakeQuartile"),
                  htmlOutput("suggestedRules"),
                  h4("Current work you will lose if you implement the rule given above:"),
-                 htmlOutput("create_rejected_html_table"))
+                 #htmlOutput("create_rejected_html_table"))
+                 dataTableOutput("createAnswerRejects"))
               )),
      tabPanel("Contributor Answers",
               textInput(inputId="id_chosen", 
