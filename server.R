@@ -426,6 +426,25 @@ shinyServer(function(input, output){
     }
   })
   
+  output$createSearchTable <- renderDataTable({
+    if (is.null(input$files[1]) || is.na(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+      job_id = job_id()
+      table = create_answer_index()
+      
+      
+#      for(i in nrow(table)){
+#       table$X_worker_id[i] = paste("https://crowdflower.com/jobs/", job_id,
+#                                       "/contributors/", table$X_worker_id[i],
+#                                                    sep="")
+#       }
+      
+      table
+    }
+  })
+
   output$create_answer_index_table <- renderText({
     if (is.null(input$files[1]) || is.na(input$files[1])) {
       # User has not uploaded a file yet
@@ -566,7 +585,7 @@ shinyServer(function(input, output){
       return(NULL)
     } else {
       full_file = full()
-      workers = workers()
+      #workers = workers()
       
       if(input$crowd_chosen != 'all'){
         full_file = full_file[full_file$X_tainted == input$crowd_chosen,]
@@ -587,29 +606,6 @@ shinyServer(function(input, output){
                                 full_file$X_trust >= min(input$trust_chosen),]
       }
       
-#       if(max(input$golds_chosen) != max(workers$num_golds_seen) || 
-#            min(input$golds_chosen) != min(workers$num_golds_seen)){
-#         ids = workers$X_worker_id[workers$num_golds_seen <= max(input$golds_chosen) &
-#                                     workers$num_golds_seen >= min(input$golds_chosen)]
-#         
-#         full_file = full_file[(full_file$X_worker_id %in% ids),]
-#       }
-      
-      ###Time Conversion Holders
-#      max_input_time = max(input$times_chosen)*3600
-#      min_input_time = min(input$times_chosen)*3600
-#      convert_max_worker = as.numeric(max(workers$last_submission))
-#      convert_min_worker = as.numeric(min(workers$last_submission))
-#      min_worker = min(workers$last_submission)
-#      max_worker = max(workers$last_submission)
-      
-#      if(max_input_time != convert_max_worker || min_input_time != convert_min_worker){
-#        ids = workers$X_worker_id[workers$last_submission <= (min_worker + max_input_time) &
-#                                    workers$last_submission >= (min_worker + min_input_time)]
-#         
-#         
-#        full_file = full_file[(full_file$X_worker_id %in% ids),]
-#      }
       full_file
     }
   })
