@@ -61,8 +61,6 @@ shinyUI(pageWithSidebar(
           tableOutput("summary_stats_channel")))
       ),
      tabPanel("Who the f@*k put that?",
-              textInput(inputId="answer_chosen",
-                        label="Search for:", value=""),
               uiOutput("questionSelectorSearch"),
               #htmlOutput("create_answer_index_table")),
               dataTableOutput("createSearchTable")),
@@ -74,6 +72,7 @@ shinyUI(pageWithSidebar(
               plotOutput("milkshakeDensity")),
         tabPanel("Set Milkshake",
                  plotOutput("milkshakeQuartile"),
+                 h5("Note this answer \"\" is defined as blank answers in your job output."),
                  htmlOutput("suggestedRules"),
                  h4("Current work you will lose if you implement the rule given above:"),
                  #htmlOutput("create_rejected_html_table"))

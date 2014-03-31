@@ -225,6 +225,9 @@ shinyServer(function(input, output){
       }
     
       answers_df = answers_df[answers_df$variable == question_input & answers_df$answer == answer_plot,]
+      
+      print("What about here? Line 231")
+      print(head(answers_df))
       answers_df
       
     }
@@ -287,11 +290,8 @@ shinyServer(function(input, output){
       #table = table[(table$percent < min_percent_accepted),]
       table_2 = table[(table$num_j > judgments_threshold & table$percent > max_percent_accepted),]
       
-      print(head(table))
      # worker_ids = table_1$X_worker_id
       worker_ids = c(table_2$X_worker_id, table_1$X_worker_id)
-      print("Workers lost")
-      print(worker_ids)
       
       workers_lost = workers[(workers$X_worker_id %in% worker_ids),]
       
@@ -309,20 +309,20 @@ shinyServer(function(input, output){
     
       workers = table$X_worker_id
       
-      for(i in 1:nrow(table)){
-        table$X_worker_id[i] = 
-          paste('<a href=\"https://crowdflower.com/jobs/', job_id,
-                '/contributors/', table$X_worker_id[i], 
-                '\">', table$X_worker_id[i], '</a>', sep="")
+     for(i in 1:nrow(table)){
+       table$X_worker_id[i] = 
+         paste('<a href=\"https://crowdflower.com/jobs/', job_id,
+               '/contributors/', table$X_worker_id[i], 
+               '\">', table$X_worker_id[i], '</a>', sep="")
         
-        table$reject[i] = 
-          paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
-                data-toggle=\"button\" id=\"get', workers[i],
-                '\" type=\"button\">Reject</button>', sep="")
+       table$reject[i] = 
+         paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
+               data-toggle=\"button\" id=\"get', workers[i],
+               '\" type=\"button\">Reject</button>', sep="")
         
-      }
+     }
       
-      table
+     table
     }
   })
   
@@ -349,11 +349,36 @@ shinyServer(function(input, output){
           axis.ticks = element_blank()
         )
        plot_this = create_summarized_df()
+       
+       num_workers = length(unique(plot_this$X_worker_id))
+       
+       num_ans = length(unique(plot_this$answer))
+       unique_answers = unique(plot_this$answer)
        plot_this = plot_this[plot_this$variable == question_input,]
+       plot_this = plot_this[order(plot_this$percent, decreasing=T),]
+       
+       if (num_ans > 10){
+         plot_this_1 = 
+           plot_this[plot_this$answer == unique_answers[1:5],] 
+         print("Plot this 1")
+         print(head(plot_this_1))
+         
+         plot_this = plot_this[order(plot_this$percent, decreasing=F),]
+         plot_this_2 =
+           plot_this[plot_this$answer == unique_answers[1:5],]
+         print("Plot this 2")
+         print(head(plot_this_2))
+         
+         plot_this = rbind(plot_this_1, plot_this_2)
+         print("Are you working? Line 362")
+         print(head(plot_this))
+       }
         
-       box_plot <- ggplot(plot_this, aes(x=answer, y=percent)) + geom_boxplot(aes(fill=answer, color=answer))
+       box_plot <- ggplot(plot_this, aes(x=answer, y=percent)) + geom_boxplot(aes(fill=answer, color=answer)) +
+        opts(axis.text.x=theme_blank())
        box_plot
-       density_plot <- ggplot(plot_this, aes(percent, fill=answer)) + geom_density(alpha = 1) + coord_flip()
+       density_plot <- ggplot(plot_this, aes(percent, fill=answer)) + geom_density(alpha = 1) + coord_flip() +
+        theme(legend.position = "none")
        density_plot
        scatter_plot <- ggplot(plot_this, aes(num_j, percent)) + geom_point(aes(color=answer)) +
         theme(legend.position = "none")
@@ -362,10 +387,7 @@ shinyServer(function(input, output){
       
     }
   })
-  
-  
-
-  
+    
   create_answer_index <- reactive({
     if (is.null(input$files[1]) || is.na(input$files[1])) {
       # User has not uploaded a file yet
@@ -375,16 +397,11 @@ shinyServer(function(input, output){
       summarized_df = create_summarized_df()
       
       field_name = input$question_chosen_search
-      search_for = input$answer_chosen
       percentage = input$percentage_chosen
       
       
       if (field_name != "all"){
         summarized_df = summarized_df[summarized_df$variable == field_name,]
-      }
-      
-      if(search_for != ""){
-        summarized_df = summarized_df[summarized_df$answer == search_for,]
       }
       
       
@@ -409,17 +426,21 @@ shinyServer(function(input, output){
       table = create_answer_index()
       workers = table$X_worker_id
       
-      for(i in 1:nrow(table)){
-       table$X_worker_id[i] = 
-         paste('<a href=\"https://crowdflower.com/jobs/', job_id,
-                        '/contributors/', table$X_worker_id[i], 
-                         '\">', table$X_worker_id[i], '</a>', sep="")
+      
+      print(nrow(table))
+      #for(i in 1:nrow(table)){
+      # table$X_worker_id[i] = 
+      #   paste('<a href=\"https://crowdflower.com/jobs/', job_id,
+      #                  '/contributors/', table$X_worker_id[i], 
+      #                   '\">', workers[i], '</a>', sep="")
        
-       table$reject[i] = 
-          paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
-                         data-toggle=\"button\" id=\"get', workers[i],
-                         '\" type=\"button\">Reject</button>', sep="")
-       } 
+      # table$reject[i] = 
+      #    paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
+      #                   data-toggle=\"button\" id=\"get', workers[i],
+      #                   '\" type=\"button\">Reject</button>', sep="")
+      #} 
+      print("AND HERE??? line 425")
+      print(head(table))
       table
     }
   })
