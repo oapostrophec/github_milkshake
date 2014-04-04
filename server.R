@@ -1,9 +1,8 @@
 ###Milkshaker Server###
-###Last updated 02/26/2014###
-##Total Answer Distros && group by - times, trust, golds seen
-##Compare contrib id with total, with untrusted, with trusted
+###Last updated 04/03/2014###
+##Total Answer Distros
 ##Who the f%@k keeps putting that?
-##Milkshaker
+##Set Milkshake Rules
 
 require('shiny')
 require('datasets')
@@ -95,8 +94,6 @@ shinyServer(function(input, output){
                               untrusted = X_tainted[1],
                               trust = X_trust[1],
                               num_judgments = length(X_unit_id),
-                              #num_golds_seen = length(X_unit_id[X_golden == 'true']),
-                              #golds_missed = paste(unique(X_unit_id[X_missed == 'true']), collapse="<br>"),
                               last_submission = X_created_at[length(X_created_at)])
       workers_answers  
     }
@@ -225,9 +222,6 @@ shinyServer(function(input, output){
       }
     
       answers_df = answers_df[answers_df$variable == question_input & answers_df$answer == answer_plot,]
-      
-      print("What about here? Line 231")
-      print(head(answers_df))
       answers_df
       
     }
@@ -262,6 +256,7 @@ shinyServer(function(input, output){
       return(NULL)
     }else{
       answers_df = create_plot_df()
+      
       x_threshold = input$x_axis_chosen
       max_y_threshold = max(input$y_axis_chosen)
       min_y_threshold = min(input$y_axis_chosen)
@@ -269,7 +264,10 @@ shinyServer(function(input, output){
         geom_vline(xintercept = x_threshold, color="darkorange") +
         geom_hline(yintercept = max_y_threshold, color="darkblue") +
         geom_hline(yintercept = min_y_threshold, color="darkblue")
-      print(set_scatter_plot)
+      
+      ##DO NOT DELETE
+        print(set_scatter_plot)
+      
     }
   })
   
@@ -284,7 +282,7 @@ shinyServer(function(input, output){
       judgments_threshold = input$x_axis_chosen
       max_percent_accepted = max(input$y_axis_chosen)
       min_percent_accepted = min(input$y_axis_chosen)
-      #print(min_percent_accepted)
+      
 
       table_1 = table[(table$num_j > judgments_threshold & table$percent < min_percent_accepted),]
       #table = table[(table$percent < min_percent_accepted),]
@@ -306,23 +304,28 @@ shinyServer(function(input, output){
     } else {
       table = create_work_reject()
       job_id = job_id()
-    
-      workers = table$X_worker_id
       
-     for(i in 1:nrow(table)){
-       table$X_worker_id[i] = 
-         paste('<a href=\"https://crowdflower.com/jobs/', job_id,
-               '/contributors/', table$X_worker_id[i], 
-               '\">', table$X_worker_id[i], '</a>', sep="")
-        
-       table$reject[i] = 
-         paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
-               data-toggle=\"button\" id=\"get', workers[i],
-               '\" type=\"button\">Reject</button>', sep="")
-        
-     }
+      if(nrow(table) != 0){
+        workers = table$X_worker_id
       
-     table
+        for(i in 1:nrow(table)){
+          table$X_worker_id[i] = 
+            paste('<a target=\"_blank\" href=\"https://crowdflower.com/jobs/', job_id,
+                 '/contributors/', table$X_worker_id[i], 
+                 '\">', table$X_worker_id[i], '</a>', sep="")
+        
+          table$reject[i] = 
+            paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
+                 data-toggle=\"button\" id=\"get', workers[i],
+                 '\" type=\"button\">Reject</button>', sep="")
+        
+        }
+       table
+      } else {
+        #if the table is empty return nothing
+        return(NULL)
+      }
+     
     }
   })
   
@@ -360,18 +363,13 @@ shinyServer(function(input, output){
        if (num_ans > 10){
          plot_this_1 = 
            plot_this[plot_this$answer == unique_answers[1:5],] 
-         print("Plot this 1")
-         print(head(plot_this_1))
          
          plot_this = plot_this[order(plot_this$percent, decreasing=F),]
          plot_this_2 =
            plot_this[plot_this$answer == unique_answers[1:5],]
-         print("Plot this 2")
-         print(head(plot_this_2))
+         
          
          plot_this = rbind(plot_this_1, plot_this_2)
-         print("Are you working? Line 362")
-         print(head(plot_this))
        }
         
        box_plot <- ggplot(plot_this, aes(x=answer, y=percent)) + geom_boxplot(aes(fill=answer, color=answer)) +
@@ -417,6 +415,17 @@ shinyServer(function(input, output){
     }
   })
   
+  output$createSearchTableButton <- renderText({
+    if (is.null(input$files[1]) || is.na(input$files[1])) {
+      # User has not uploaded a file yet
+      return(NULL)
+    } else {
+        button = paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
+                        data-toggle=\"button\" id=\"get_workers\" type=\"button\">Reject All</button>', sep="")    
+        button
+    }
+  })
+
   output$createSearchTable <- renderDataTable({
     if (is.null(input$files[1]) || is.na(input$files[1])) {
       # User has not uploaded a file yet
@@ -424,23 +433,7 @@ shinyServer(function(input, output){
     } else {
       job_id = job_id()
       table = create_answer_index()
-      workers = table$X_worker_id
-      
-      
-      print(nrow(table))
-      #for(i in 1:nrow(table)){
-      # table$X_worker_id[i] = 
-      #   paste('<a href=\"https://crowdflower.com/jobs/', job_id,
-      #                  '/contributors/', table$X_worker_id[i], 
-      #                   '\">', workers[i], '</a>', sep="")
        
-      # table$reject[i] = 
-      #    paste('<button class=\"btn btn-danger action-button shiny-bound-input\" 
-      #                   data-toggle=\"button\" id=\"get', workers[i],
-      #                   '\" type=\"button\">Reject</button>', sep="")
-      #} 
-      print("AND HERE??? line 425")
-      print(head(table))
       table
     }
   })
@@ -630,7 +623,6 @@ shinyServer(function(input, output){
   
   output$total_distros <- renderChart({
     if (is.null(input$files[1]) || is.na(input$files[1]) || is.null(input$question_chosen)) {
-      #print('Before file upload line 686')
       return(NULL)
     } else {
       full_file = table_for_answer_distros()
@@ -639,15 +631,15 @@ shinyServer(function(input, output){
 
       chosen_q = input$question_chosen
       question_index = which(answer_cols_names == chosen_q)
-     # if(is.null(question_index)){
-     #    question_index = answer_cols_names[1]
-     #  }
+      if(is.null(question_index)){
+         question_index = answer_cols_names[1]
+       }
       
       responses = lapply(answer_cols_names, function(x) {
         responses = table(full_file[,names(full_file)==x])
         responses/sum(responses)
       })
-      #print("whats going on here line 700?")
+      
       responses_table = responses[[question_index]]
       
       responses_table_transformed = data.frame(questions = names(responses_table),
@@ -676,8 +668,8 @@ shinyServer(function(input, output){
       p3$xAxis(rotateLabels=45)
       p3$xAxis(axisLabel='Total Responses')
       p3$chart(reduceXTicks = FALSE)
+      
       p3
-
     }
   })
   
@@ -746,30 +738,31 @@ shinyServer(function(input, output){
          responses_table_transformed[responses_table_transformed$group == 'individual',]
        responses_table_transformed_b =
          responses_table_transformed_b[order(responses_table_transformed_b$numbers, decreasing=T),]
-      
-      if (nrow(responses_table_transformed_a) > 9 ) {
-          responses_table_transformed1 = responses_table_transformed_a[1:9,]
-          responses_table_transformed1[10,] =
-            c("Other Values All", 
-              sum(responses_table_transformed_a$numbers[10:length(responses_table_transformed_a)]),
-              chosen_q)
-          responses_table_transformed_a = responses_table_transformed1
-        }
-      
-       if(nrow(responses_table_transformed_b) > 9){
-         responses_table_transformed2 = responses_table_transformed_b[1:9,]
-         responses_table_transformed2[10,] =
-           c("Other Values Individual", 
-             sum(responses_table_transformed_b$numbers[10:length(responses_table_transformed_b)]),
-             chosen_q)
-         responses_table_transformed_b = responses_table_transformed2         
-       }
-      
+            
     
       responses_table_transformed <- rbind(responses_table_transformed_a, responses_table_transformed_b)
       
       responses_table_transformed$questions[responses_table_transformed$questions==""] = "\"\""
-     
+      
+      
+      if(nrow(responses_table_transformed) > 10){
+        responses_table_transformed_1 = responses_table_transformed[responses_table_transformed$group == "all",]
+          responses_table_transformed_1 = responses_table_transformed_1[1:10,]
+        responses_table_transformed_2 = responses_table_transformed[responses_table_transformed$group == "individual",]
+          responses_table_transformed_2 = responses_table_transformed_2[1:10,]
+        responses_table_transformed_3 = rbind(responses_table_transformed_1, responses_table_transformed_2)
+       
+        responses_table_transformed = responses_table_transformed_3
+       }
+      
+      if(input$order_chosen == FALSE){
+        responses_table_transformed = responses_table_transformed[with(responses_table_transformed,
+                                                                       order(-(as.integer(factor(group))))),]
+      } else {
+        responses_table_transformed = responses_table_transformed[with(responses_table_transformed,
+                                                                       order(as.integer(factor(group)))),]
+      }
+      
       p4 <- nPlot(numbers ~ questions, data=responses_table_transformed,
                   group = 'group', type='multiBarChart', 
                   dom='contrib_distros', width=800, margin=60, overflow="visible") 

@@ -1,6 +1,8 @@
 ###Milkshaker UI###
-###Last updated 02/26/2014###
-##recently add comparitive graph and description###
+###Last updated 04/03/2014###
+##Total Answer Distros
+##Who the f%@k keeps putting that?
+##Set Milkshake Rules
 
 require('shiny')
 require('datasets')
@@ -62,7 +64,8 @@ shinyUI(pageWithSidebar(
       ),
      tabPanel("Who the f@*k put that?",
               uiOutput("questionSelectorSearch"),
-              #htmlOutput("create_answer_index_table")),
+              htmlOutput("createSearchTableButton"),
+              br(),
               dataTableOutput("createSearchTable")),
      tabPanel("Milkshake Analyzer",
               uiOutput("questionSelectorMilkshaker"),
@@ -75,12 +78,12 @@ shinyUI(pageWithSidebar(
                  h5("Note this answer \"\" is defined as blank answers in your job output."),
                  htmlOutput("suggestedRules"),
                  h4("Current work you will lose if you implement the rule given above:"),
-                 #htmlOutput("create_rejected_html_table"))
                  dataTableOutput("createAnswerRejects"))
               )),
      tabPanel("Contributor Answers",
               textInput(inputId="id_chosen", 
                         label="Choose a worker id to graph:", value=""),
+              checkboxInput(inputId="order_chosen", label="Show most common answers by all"),
               showOutput("contrib_distros", "nvd3"),
               uiOutput("graphDesc"),
               selectInput(inputId = "contrib_crowd_chosen", 
