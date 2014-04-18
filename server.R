@@ -27,11 +27,29 @@ shinyServer(function(input, output){
     if (is.null(input$files[1]) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
+    } else if (input$job_id_chosen > 0) {
+      inFile = input$job_id
+      #tryCatch(
+      system(paste('s3cmd --force get s3://crowdflower_prod/f',
+                   inFile,'.csv.zip /tmp/f', inFile, '.zip',sep=''),
+             intern=T)
+      
+      system(paste('unzip -o /tmp/f', inFile, '.zip -d /tmp', sep=''))
+      val <- try(read.csv(paste('/tmp/f',inFile,'.csv',sep='')), silent=TRUE)
+      if (inherits(val, "try-error")) {
+        stop(paste("Sorry, we could not find your file. Either job", input$job_id,
+                   "does not exist or its Full Report has not been generated yet.",
+                   "Check", paste("http://crowdflower.com/jobs/",input$job_id,"/reports.",sep=""),
+                   "\nRefresh this page before uploading a csv."))
+      } else {
+        full_file = read.csv(paste('/tmp/f',inFile,'.csv',sep=''))
+        log_id = inFile
+      }
     } else {
       inFile <- input$files
       full = read.csv(inFile$datapath, na.strings="NaN", stringsAsFactors=FALSE)
-      #full$X_created_at = as.POSIXct(full$X_created_at,
-      #                               format='%m/%d/%Y %H:%M:%S')
+      log_id = input$files$name
+      
       return(full)
     }
   })
@@ -41,12 +59,47 @@ shinyServer(function(input, output){
     if (is.null(input$files[1]) || is.na(input$files[1])) {
       # User has not uploaded a file yet
       return(NULL)
+    } else if(input$job_id_chosen){
+      return(input$job_id_chosen)
     } else {
       inFile <- input$files$name
       job_id = gsub(inFile, pattern="^f", replacement="")
       job_id = str_extract(job_id, "\\d{6}")
       return(job_id)
     }
+  })
+  
+  ###Output Summary Message: Sidebar
+  output$summary_message <- renderText({
+    if ((is.null(input$files[1]) || is.na(input$files[1])) && input$job_id_chosen==0) {
+      # User has not uploaded a file yet
+      return("<p>You have not uploaded any files yet</p>")
+    } else {
+      full_file = full()
+      num_contributors = length(unique(full_file$X_worker_id))
+      num_gold_units = length(unique(full_file$X_unit_id[full_file$X_golden=='true']))
+      num_nongold_units = length(unique(full_file$X_unit_id)) - num_gold_units
+      num_trusted_judgments = sum(full_file$X_tainted != 'true')
+      num_untrusted_judgments = sum(full_file$X_tainted == 'true')
+      if (num_untrusted_judgments == 0) {
+        tainted_message = "<p style='color:red;'>It looks like you don't have any <b>tainted judgments</b> in your file. Change reporting settings and regenerate the report if this is not intentional.</p>"
+      } else {
+        tainted_message = ""
+      }
+      if (num_gold_units == 0) {
+        gold_message = "<p style='color:red;'>It looks like you don't have any <b>Gold units</b> in yout file. Change reporting settings and regenerate the report if this is not intentional.</p>"
+      } else {
+        gold_message = ""
+      }
+      overall_message = paste("<p>The report you uploaded has:<br>",
+                              num_contributors, " contributors,<br>",
+                              num_gold_units, " gold units,<br>",
+                              num_nongold_units, " ordinary units,<br>",
+                              num_trusted_judgments, " trusted judgments,<br>",
+                              num_untrusted_judgments, " untrusted judgments.<br>",
+                              "</p>", sep="")
+      paste(overall_message, tainted_message, gold_message)
+    } 
   })
   
   ###Grab Answer Columns
@@ -88,6 +141,8 @@ shinyServer(function(input, output){
     }else{
       
       full_file = full()
+      
+      if("X_tainted" %in% names(full_file)){
       workers_answers = ddply(full_file, .(X_worker_id), summarize,
                               channel = X_channel[1],
                               country = X_country[1],
@@ -95,6 +150,17 @@ shinyServer(function(input, output){
                               trust = X_trust[1],
                               num_judgments = length(X_unit_id),
                               last_submission = X_created_at[length(X_created_at)])
+      } else {
+      workers_answers = ddply(full_file, .(X_worker_id), summarize,
+                              channel = X_channel[1],
+                              country = X_country[1],
+                              #untrusted = X_tainted[1],
+                              trust = X_trust[1],
+                              num_judgments = length(X_unit_id),
+                              last_submission = X_created_at[length(X_created_at)])  
+      }
+      
+      
       workers_answers  
     }
   })
@@ -151,12 +217,12 @@ shinyServer(function(input, output){
       return(NULL)
     }else{
       threshold_min = 0.00
-      threshold_max = 1.05
+      threshold_max = 1.00
       
       sliderInput(inputId="y_axis_chosen",
                   label="Milkshake Answer Percent Range to Threshold",
-                  min = threshold_min, max = threshold_max,
-                  step = 0.01, value=c(threshold_min + .01, threshold_max - .01))
+                  min = threshold_min -.01, max = threshold_max + .01,
+                  step = 0.01, value=c(threshold_min - .01, threshold_max + .01))
       
     }
   })
@@ -234,18 +300,39 @@ shinyServer(function(input, output){
       return(NULL)
     }else{
     df = create_plot_df()
-    percent_min = min(input$y_axis_chosen)
-    percent_max = max(input$y_axis_chosen)
+    percent_min = min(input$y_axis_chosen) * 100
+    percent_max = max(input$y_axis_chosen) * 100
     num_judgments = input$x_axis_chosen
     rule = df$answer[1]
+      
     question = df$variable[1]
     judgment = paste("Set Activation Threshold to", num_judgments, "judgments.", sep=" ")
-    rule = paste("Enter (", rule, ") into the Acceptable answer distribution for ", question,
+    rule_reg_ex = paste("Enter (", rule, ") into the Acceptable answer distribution for ", question,
                  ".", sep="")
+    
+    if(rule == "\"\""){
+      rule = "^\\s+"
+      rule_reg_ex = paste("Enter ", rule, " into the Acceptable answer distribution for ", question,
+                          ".", sep="")
+    } 
+    
     min_max = paste("Set the Min percentage to ", percent_min, ". Set the Max percentage to ",
                     percent_max, ".", sep="")
     
-    suggested_rules = paste(judgment, rule, min_max, sep="<br>")
+    if(percent_min > -1 || percent_max < 101){
+      if(percent_min == -1){
+        min_max = paste("Set the Min percentage to 0. Set the Max percentage to ",
+                        percent_max, ".", sep="")
+      }
+      if(percent_max == 101){
+        min_max = paste("Set the Min percentage to ", percent_min, ". Set the Max percentage to 100.", sep="")  
+      }
+      suggested_rules = paste(judgment, rule_reg_ex, min_max, sep="<br>")
+    } else{
+    suggested_rules = paste("No data detected.")
+    }
+    
+    suggested_rules
     }
   })
   
@@ -260,10 +347,10 @@ shinyServer(function(input, output){
       x_threshold = input$x_axis_chosen
       max_y_threshold = max(input$y_axis_chosen)
       min_y_threshold = min(input$y_axis_chosen)
-      set_scatter_plot <- ggplot(answers_df, aes(num_j, percent)) + geom_point(aes(color=answer)) +
-        geom_vline(xintercept = x_threshold, color="darkorange") +
-        geom_hline(yintercept = max_y_threshold, color="darkblue") +
-        geom_hline(yintercept = min_y_threshold, color="darkblue")
+      set_scatter_plot <- ggplot(answers_df, aes(num_j, percent)) + geom_point(aes(color=answer), color = "#0033cc") +
+        geom_vline(xintercept = x_threshold, color="#0000cc") +
+        geom_hline(yintercept = max_y_threshold, color="#009933") +
+        geom_hline(yintercept = min_y_threshold, color="#009933")
       
       ##DO NOT DELETE
         print(set_scatter_plot)
@@ -372,14 +459,14 @@ shinyServer(function(input, output){
          plot_this = rbind(plot_this_1, plot_this_2)
        }
         
-       box_plot <- ggplot(plot_this, aes(x=answer, y=percent)) + geom_boxplot(aes(fill=answer, color=answer)) +
-        opts(axis.text.x=theme_blank())
-       box_plot
+       box_plot <- ggplot(plot_this, aes(x=answer, y=percent)) + geom_boxplot(aes(fill=answer, color=answer)) + 
+        opts(axis.text.x=theme_blank()) 
+       box_plot 
        density_plot <- ggplot(plot_this, aes(percent, fill=answer)) + geom_density(alpha = 1) + coord_flip() +
-        theme(legend.position = "none")
+        theme(legend.position = "none") 
        density_plot
        scatter_plot <- ggplot(plot_this, aes(num_j, percent)) + geom_point(aes(color=answer)) +
-        theme(legend.position = "none")
+        theme(legend.position = "none") 
        scatter_plot
        grid.arrange(box_plot, empty, scatter_plot, density_plot, ncol=2, nrow=2, widths=c(4,2), heights=c(2,3))
       
@@ -395,7 +482,7 @@ shinyServer(function(input, output){
       summarized_df = create_summarized_df()
       
       field_name = input$question_chosen_search
-      percentage = input$percentage_chosen
+      #percentage = input$percentage_chosen
       
       
       if (field_name != "all"){
@@ -403,12 +490,10 @@ shinyServer(function(input, output){
       }
       
       
-      
-      if(min(percentage) != 0.01 || max(percentage) != 1.0){
-       
-      summarized_df = 
-       summarized_df[summarized_df$percent >= min(percentage) & summarized_df$percent <= max(percentage),]
-      }
+    # if(min(percentage) != 0.01 || max(percentage) != 1.0){
+    #   summarized_df = 
+    #   summarized_df[summarized_df$percent >= min(percentage) & summarized_df$percent <= max(percentage),]
+    # }
       
       summarized_df = summarized_df[order(summarized_df$num_j, decreasing=T),]
       summarized_df
@@ -434,9 +519,11 @@ shinyServer(function(input, output){
       job_id = job_id()
       table = create_answer_index()
        
+      print("Is this updating?")
+      print(head(table))
       table
     }
-  })
+  }, options = list(bSortClasses = TRUE))
   
   output$questionSelector <- renderUI({
     if (is.null(input$files[1]) || is.na(input$files[1])) {
@@ -480,8 +567,15 @@ shinyServer(function(input, output){
       answers_list = create_summarized_df()
       answers_list = answers_list[answers_list$variable == question_subset,]
       answers = unique(answers_list$answer)
-      selectInput(inputId="answer_chosen_milkshaker", label="Select answer to display in Polychart:", 
-                  answers)
+      selectizeInput("answer_chosen_milkshaker", 
+                      "Select answer to display below:", 
+                      choices = answers,
+                      multiple = FALSE,
+                      selected = answers[1],
+                      #selectize = TRUE
+                      options = list(
+                        plugins = I("['optgroup_columns']"))
+                )
     }
   })
   
@@ -525,9 +619,11 @@ shinyServer(function(input, output){
     } else {
       full_file = full()
       #workers = workers()
-      
-      if(input$crowd_chosen != 'all'){
-        full_file = full_file[full_file$X_tainted == input$crowd_chosen,]
+     
+      if("X_tainted" %in% names(full_file)){
+       if(input$crowd_chosen != 'all'){
+         full_file = full_file[full_file$X_tainted == input$crowd_chosen,]
+       }
       }
       
       chosen_state = input$state_chosen
@@ -685,9 +781,11 @@ shinyServer(function(input, output){
       question_index = which(answer_cols_names == chosen_q)      
       chosen_state = input$state_chosen_contrib
       
+      if("X_tainted" %in% names(full_file_all)){
       if(input$contrib_crowd_chosen != 'all'){
         full_file_all = full_file_all[full_file_all$X_tainted == input$contrib_crowd_chosen,]
         
+        }
       }
       
       if ("X_golden" %in% names(full_file)) {
